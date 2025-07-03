@@ -1,0 +1,12 @@
+artifacts/
+
+.env*
+!.env.example
+
+*.local
+
+_*
+
+# Added by cargo
+
+/target

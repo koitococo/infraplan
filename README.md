@@ -1,0 +1,1 @@
+# Infraplan - Deploy everything with single configuration

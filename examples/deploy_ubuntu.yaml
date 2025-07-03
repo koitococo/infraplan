@@ -1,0 +1,75 @@
+state_path: /infraplan-state.json
+
+global:
+  distro_hint: ubuntu
+
+recipe:
+  - id: system_deploy
+    name: Deploy ubuntu
+    use: system_deployer
+    with:
+      type: tar
+      url: https://example.local/ubuntu.tar.gz
+      disk: /dev/sda
+      mount: /mnt
+    override:
+      distro_hint: alpine
+  - id: system_reconfigure
+    name: Reconfigure ubuntu
+    use: system_reconfigurator
+    # chroot: /mnt
+    with:
+      - use: netplan
+        with:
+          - type: dhcp
+            interface: eth0
+          - type: static
+            interface: eth1
+            address: 172.16.200.1
+      - use: user
+        with:
+          - name: root
+            password: root
+          - name: ubuntu
+            password: ubuntu
+            groups:
+              - sudo
+      - use: apt_repo
+        with:
+          - overwrite: true
+            base_url: https://archive.ubuntu.com/ubuntu
+            distro: nobel
+            components:
+              - main
+              - universe
+              - restricted
+              - multiverse
+          - name: docker
+            base_url: https://download.docker.com/linux/debian
+            distro: nobel
+            components:
+              - stable
+  - id: reboot
+    name: Reboot system
+    use: reboot
+    with:
+      type: kexec
+      linux: /mnt/boot/vmlinuz
+      initrd: /mnt/boot/initrd.img
+      root: /dev/sda3
+      append: "ro quiet splash"
+      move_state: /mnt/infraplan-state.json
+  - id: install_packages
+    name: Install packages
+    use: package_manager
+    with:
+      install:
+        - vim
+        - git
+        - curl
+        - wget
+        - htop
+        - docker.io
+      remove:
+        - snapd
+        - lxd
