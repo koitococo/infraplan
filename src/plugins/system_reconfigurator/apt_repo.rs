@@ -1,4 +1,4 @@
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone,PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ConfigItem {
   pub overwrite: Option<bool>,
   pub name: Option<String>,

@@ -5,19 +5,19 @@ pub mod reboot;
 pub mod system_deployer;
 pub mod system_reconfigurator;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Config {
   pub state_path: Option<String>,
   pub global: Option<Global>,
   pub recipe: Vec<Recipe>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Global {
   pub distro_hint: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Recipe {
   pub id: String,
   pub name: Option<String>,
@@ -28,7 +28,7 @@ pub struct Recipe {
   pub recipe_config: RecipeConfig,
 }
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "use", content = "with")]
 pub enum RecipeConfig {
   SystemDeployer(system_deployer::Config),
@@ -199,9 +199,13 @@ mod tests {
 
     let json_content = serde_json::to_string_pretty(&config).expect("Failed to serialize to JSON");
     println!("{}", json_content);
+    let deserialized_json = Config::from_json(&json_content).expect("Failed to deserialize JSON");
+    assert_eq!(config, deserialized_json);
 
     let yaml_content = serde_yml::to_string(&config).expect("Failed to serialize to YAML");
     println!("{}", yaml_content);
+    let deserialized_yaml = Config::from_yaml(&yaml_content).expect("Failed to deserialize YAML");
+    assert_eq!(config, deserialized_yaml);
   }
 
   #[test]

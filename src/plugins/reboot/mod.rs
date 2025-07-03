@@ -1,6 +1,6 @@
 pub mod kexec;
 
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Config {
   Kexec(kexec::Config),
