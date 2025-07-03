@@ -47,7 +47,7 @@ impl Config {
   pub fn from_yaml(yaml: &str) -> anyhow::Result<Self> { serde_yml::from_str(yaml).map_err(|e| anyhow::anyhow!(e)) }
 
   pub fn from_path(path: &str) -> anyhow::Result<Self> {
-    log::info!("Loading configuration from: {}", path);
+    log::info!("Loading configuration from: {path}");
     let content = std::fs::read_to_string(path).map_err(|e| anyhow::anyhow!(e))?;
     if path.ends_with(".json") {
       Self::from_json(&content)
@@ -59,7 +59,7 @@ impl Config {
   }
 
   pub async fn invoke(&self) {
-    log::debug!("Invoking configuration: {:?}", self);
+    log::debug!("Invoking configuration: {self:?}");
     for recipe in &self.recipe {
       if let Err(e) = recipe.invoke(self.global.as_ref().unwrap_or(&Global { distro_hint: None })).await {
         log::error!("Failed to invoke recipe {}: {}", recipe.name.as_deref().unwrap_or(&recipe.id), e);

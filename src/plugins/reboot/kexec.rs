@@ -9,7 +9,7 @@ pub struct Config {
 
 impl crate::plugins::Plugin for Config {
   async fn invoke(&self, global: &crate::plugins::Global) -> anyhow::Result<()> {
-    log::info!("Kexec with config: {:?}; globals: {:?}", self, global);
+    log::info!("Kexec with config: {self:?}; globals: {global:?}");
     Ok(())
   }
 }

@@ -14,7 +14,7 @@ pub enum Config {
 
 impl super::Plugin for Config {
   async fn invoke(&self, global: &super::Global) -> anyhow::Result<()> {
-    log::info!("System Deployer with config: {:?}; globals: {:?}", self, global);
+    log::info!("System Deployer with config: {self:?}; globals: {global:?}");
     Ok(())
   }
 }
