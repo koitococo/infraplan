@@ -6,6 +6,9 @@ pub mod plugins;
 struct Cli {
   #[clap(subcommand)]
   command: Command,
+
+  #[clap(long, short, default_value = "false")]
+  verbose: bool,
 }
 
 #[derive(Parser, Debug)]
@@ -20,10 +23,21 @@ struct ApplyArgs {
 
 #[tokio::main]
 async fn main() {
-  env_logger::init();
-  log::set_max_level(log::LevelFilter::Trace);
-
   let cli = Cli::parse();
+
+  env_logger::Builder::from_env(env_logger::Env::default().default_filter_or({
+    #[cfg(debug_assertions)]
+    {
+      if cli.verbose { "trace" } else { "debug" }
+    }
+    #[cfg(not(debug_assertions))]
+    {
+      if cli.verbose { "debug" } else { "info" }
+    }
+  }))
+  .format_timestamp_millis()
+  .init();
+
   log::debug!("Parsed CLI arguments: {cli:?}");
 
   match cli.command {
