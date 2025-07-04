@@ -1,4 +1,4 @@
-#[derive(Debug, Clone,PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ConfigItem {
   pub name: String,
   pub password: Option<String>,

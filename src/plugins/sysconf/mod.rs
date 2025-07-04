@@ -2,7 +2,7 @@ pub mod apt_repo;
 pub mod netplan;
 pub mod user;
 
-#[derive(Debug, Clone,PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "use", content = "with")]
 pub enum ConfigItem {
   Netplan(netplan::Config),

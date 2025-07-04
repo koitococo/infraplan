@@ -1,12 +1,13 @@
 pub mod tar;
+mod utils;
 
-#[derive(Debug, Clone, PartialEq, Eq,serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct CommonConfig {
   pub disk: String,
   pub mount: String,
-} 
+}
 
-#[derive(Debug, Clone,PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "type")]
 pub enum Config {
   Tar(tar::Config),

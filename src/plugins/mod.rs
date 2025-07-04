@@ -1,9 +1,9 @@
 #![allow(async_fn_in_trait)]
 
-pub mod package_manager;
+pub mod pkgmgr;
 pub mod reboot;
-pub mod system_deployer;
-pub mod system_reconfigurator;
+pub mod sys_deploy;
+pub mod sysconf;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Config {
@@ -31,10 +31,10 @@ pub struct Recipe {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "use", content = "with")]
 pub enum RecipeConfig {
-  SystemDeployer(system_deployer::Config),
-  PackageManager(package_manager::Config),
+  SystemDeployer(sys_deploy::Config),
+  PackageManager(pkgmgr::Config),
   Reboot(reboot::Config),
-  SystemReconfigurator(system_reconfigurator::Config),
+  SystemReconfigurator(sysconf::Config),
 }
 
 impl Config {
@@ -130,9 +130,9 @@ mod tests {
           name: Some("Deploy ubuntu".to_string()),
           chroot: None,
           overrides: None,
-          recipe_config: RecipeConfig::SystemDeployer(system_deployer::Config::Tar(system_deployer::tar::Config {
+          recipe_config: RecipeConfig::SystemDeployer(sys_deploy::Config::Tar(sys_deploy::tar::Config {
             url: "https://example.local/ubuntu.tar.gz".to_string(),
-            common: system_deployer::CommonConfig {
+            common: sys_deploy::CommonConfig {
               disk: "/dev/sda".to_string(),
               mount: "/mnt".to_string(),
             },
@@ -144,17 +144,17 @@ mod tests {
           chroot: Some("/mnt".to_string()),
           overrides: None,
           recipe_config: RecipeConfig::SystemReconfigurator(vec![
-            system_reconfigurator::ConfigItem::Netplan(vec![system_reconfigurator::netplan::ConfigItem {
+            sysconf::ConfigItem::Netplan(vec![sysconf::netplan::ConfigItem {
               type_: "static".to_string(),
               interface: "eth0".to_string(),
               address: Some("172.16.1.1".to_string()),
             }]),
-            system_reconfigurator::ConfigItem::User(vec![system_reconfigurator::user::ConfigItem {
+            sysconf::ConfigItem::User(vec![sysconf::user::ConfigItem {
               name: "ubuntu".to_string(),
               password: Some("password".to_string()),
               groups: Some(vec!["sudo".to_string(), "docker".to_string()]),
             }]),
-            system_reconfigurator::ConfigItem::AptRepo(vec![system_reconfigurator::apt_repo::ConfigItem {
+            sysconf::ConfigItem::AptRepo(vec![sysconf::apt_repo::ConfigItem {
               overwrite: Some(true),
               name: Some("Ubuntu Archive".to_string()),
               base_url: "http://archive.ubuntu.com/ubuntu/".to_string(),
@@ -181,7 +181,7 @@ mod tests {
           name: Some("Install packages".to_string()),
           overrides: None,
           chroot: None,
-          recipe_config: RecipeConfig::PackageManager(package_manager::Config {
+          recipe_config: RecipeConfig::PackageManager(pkgmgr::Config {
             install: Some(vec![
               "vim".to_string(),
               "git".to_string(),

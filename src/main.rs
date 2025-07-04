@@ -1,6 +1,9 @@
 use clap::Parser;
 
+use crate::utils::elevate_privileges;
+
 pub mod plugins;
+mod utils;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -22,7 +25,7 @@ struct ApplyArgs {
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
   let cli = Cli::parse();
 
   env_logger::Builder::from_env(env_logger::Env::default().default_filter_or({
@@ -40,6 +43,7 @@ async fn main() {
 
   log::debug!("Parsed CLI arguments: {cli:?}");
 
+  elevate_privileges()?;
   match cli.command {
     Command::Apply(args) => {
       log::info!("Applying configuration from path: {}", args.path);
@@ -49,4 +53,5 @@ async fn main() {
       }
     }
   }
+  Ok(())
 }

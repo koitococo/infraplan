@@ -1,4 +1,4 @@
-#[derive(Debug, Clone,PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Config {
   pub install: Option<Vec<String>>,
   pub remove: Option<Vec<String>>,
