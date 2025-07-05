@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::utils::elevate_privileges;
+use crate::utils::{elevate_privileges, fstab};
 
 pub mod plugins;
 mod utils;
