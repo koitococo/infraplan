@@ -1,6 +1,3 @@
-use std::ffi::CString;
-// use infraplan_sys::{FstabEntry as FstabEntrySys, get_fstab_entries as get_fstab_entries_sys};
-
 #[derive(Debug, Clone)]
 pub struct FstabEntry {
   pub device: String,
@@ -11,25 +8,29 @@ pub struct FstabEntry {
   pub pass: i32,
 }
 
-
-
-pub fn get_fstab_entries() -> Vec<FstabEntry> {
-  let mut entries_ptr: *mut FstabEntrySys = std::ptr::null_mut();
-  let result = unsafe { get_fstab_entries_sys(&mut entries_ptr) };
-  if result == 0 {
-    return Vec::with_capacity(0);
-  }
-  let mut entries = Vec::with_capacity(result as usize);
-  unsafe {
-    let mut current = entries_ptr;
-    for _ in 0..result {
-      let v = (*current).into();
-      println!("Fstab Entry: {:?}", &v);
-      entries.push(v);
-      current = current.add(1);
-    }
-  }
-  entries
+pub fn get_fstab_entries() -> anyhow::Result<Vec<FstabEntry>> {
+  std::fs::read_to_string("/proc/self/mounts")
+    .map(|contents| {
+      contents
+        .lines()
+        .filter_map(|line| {
+          let parts: Vec<&str> = line.split_whitespace().collect();
+          if parts.len() == 6 {
+            Some(FstabEntry {
+              device: parts[0].into(),
+              mount_point: parts[1].into(),
+              file_system_type: parts[2].into(),
+              options: parts[3].into(),
+              dump: parts[4].parse().unwrap_or(-1),
+              pass: parts[5].parse().unwrap_or(-1),
+            })
+          } else {
+            None
+          }
+        })
+        .collect()
+    })
+    .map_err(|e| anyhow::anyhow!("Failed to read /proc/self/mounts: {}", e))
 }
 
 #[cfg(test)]
@@ -38,7 +39,7 @@ mod tests {
 
   #[test]
   fn test_get_fstab_entries() {
-    let entries = get_fstab_entries();
+    let entries = get_fstab_entries().unwrap();
     assert!(!entries.is_empty(), "Fstab entries should not be empty");
     for entry in entries {
       println!(

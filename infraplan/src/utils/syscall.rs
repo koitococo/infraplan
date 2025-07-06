@@ -1,5 +1,7 @@
 use std::ffi::CString;
 
+use crate::utils::fstab::get_fstab_entries;
+
 pub enum FsType {
   Vfat,
   Ext4,
@@ -8,7 +10,7 @@ pub enum FsType {
   Proc,
   Devtmpfs,
   Devpts,
-  Efivarfs
+  Efivarfs,
 }
 
 impl From<FsType> for &'static str {
@@ -27,6 +29,12 @@ impl From<FsType> for &'static str {
 }
 
 pub fn mount(blk: &str, target: &str, fstype: FsType) -> anyhow::Result<()> {
+  let fstab = get_fstab_entries()?;
+  if let Some(m) = fstab.iter().find(|v| v.mount_point == target) {
+    log::info!("Target {} is already mounted, trying to unmount", target);
+    unmount(m.mount_point.as_str())?;
+  }
+
   let fstype: &str = fstype.into();
   log::info!("Mounting {} on {} as {}", blk, target, fstype);
   std::fs::create_dir_all(target)?;

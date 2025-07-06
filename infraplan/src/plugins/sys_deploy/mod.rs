@@ -1,3 +1,5 @@
+use crate::plugins::Distro;
+
 pub mod tar;
 mod utils;
 
@@ -5,6 +7,7 @@ mod utils;
 pub struct CommonConfig {
   pub disk: String,
   pub mount: String,
+  pub distro: Distro
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

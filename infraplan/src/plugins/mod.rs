@@ -1,5 +1,7 @@
 #![allow(async_fn_in_trait)]
 
+use std::path::Path;
+
 pub mod pkgmgr;
 pub mod reboot;
 pub mod sys_deploy;
@@ -14,7 +16,17 @@ pub struct Config {
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Global {
-  pub distro_hint: Option<String>,
+  pub distro_hint: Option<Distro>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Distro {
+  Ubuntu,
+  Arch,
+  Debian,
+  Fedora,
+  Alpine,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -46,26 +58,26 @@ impl Config {
 
   pub fn from_yaml(yaml: &str) -> anyhow::Result<Self> { serde_yml::from_str(yaml).map_err(|e| anyhow::anyhow!(e)) }
 
-  pub fn from_path(path: &str) -> anyhow::Result<Self> {
-    log::info!("Loading configuration from: {path}");
-    let content = std::fs::read_to_string(path).map_err(|e| anyhow::anyhow!(e))?;
-    if path.ends_with(".json") {
-      Self::from_json(&content)
-    } else if path.ends_with(".yaml") || path.ends_with(".yml") {
-      Self::from_yaml(&content)
-    } else {
-      anyhow::bail!("Unsupported file format: {}", path);
+  pub fn from_path<P: AsRef<Path>>(path: P) -> anyhow::Result<Self> {
+    log::info!("Loading configuration from: {}", path.as_ref().display());
+    let content = std::fs::read_to_string(path.as_ref()).map_err(|e| anyhow::anyhow!(e))?;
+    let ext_name = path.as_ref().extension().and_then(|s| s.to_str()).unwrap_or("");
+    match ext_name {
+      "json" => Self::from_json(&content),
+      "yaml" | "yml" => Self::from_yaml(&content),
+      _ => anyhow::bail!("Unsupported file format: {}", path.as_ref().display()),
     }
   }
 
-  pub async fn invoke(&self) {
+  pub async fn invoke(&self) -> anyhow::Result<()> {
     log::debug!("Invoking configuration: {self:?}");
     for recipe in &self.recipe {
       if let Err(e) = recipe.invoke(self.global.as_ref().unwrap_or(&Global { distro_hint: None })).await {
         log::error!("Failed to invoke recipe {}: {}", recipe.name.as_deref().unwrap_or(&recipe.id), e);
-        return;
+        return Err(e);
       }
     }
+    Ok(())
   }
 }
 
@@ -115,6 +127,8 @@ impl Plugin for Recipe {
 
 #[cfg(test)]
 mod tests {
+  use std::{path::PathBuf, str::FromStr};
+
   use super::*;
 
   #[test]
@@ -122,7 +136,7 @@ mod tests {
     let config = Config {
       state_path: Some("/infraplan-state.json".to_string()),
       global: Some(Global {
-        distro_hint: Some("ubuntu".to_string()),
+        distro_hint: Some(Distro::Ubuntu),
       }),
       recipe: vec![
         Recipe {
@@ -131,10 +145,12 @@ mod tests {
           chroot: None,
           overrides: None,
           recipe_config: RecipeConfig::SystemDeployer(sys_deploy::Config::Tar(sys_deploy::tar::Config {
-            url: "https://example.local/ubuntu.tar.gz".to_string(),
+            url: "https://example.local/ubuntu.tar.zstd".to_string(),
+            compression: Some(sys_deploy::tar::Compression::Zstd),
             common: sys_deploy::CommonConfig {
               disk: "/dev/sda".to_string(),
               mount: "/mnt".to_string(),
+              distro: Distro::Ubuntu,
             },
           })),
         },
@@ -210,9 +226,14 @@ mod tests {
 
   #[test]
   fn deserialize_yaml() {
-    let yaml_path = "examples/deploy_ubuntu.yaml";
-    let yaml_content = std::fs::read_to_string(yaml_path).expect("Failed to read YAML file");
-    let config: Config = serde_yml::from_str(&yaml_content).expect("Failed to deserialize YAML");
-    println!("{:#?}", config);
+    const EXAMPLES_PATH: &str = "../examples";
+    let examples_path = PathBuf::from_str(EXAMPLES_PATH).unwrap();
+    let files: Vec<_> = examples_path.read_dir().unwrap().collect();
+
+    for entry in files {
+      let config_path = entry.unwrap().path();
+      let config = Config::from_path(&config_path).expect(format!("Failed to load config: {}", config_path.display()).as_str());
+      println!("{:#?}", config);
+    }
   }
 }

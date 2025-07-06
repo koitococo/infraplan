@@ -19,7 +19,7 @@ pub fn prepare_chroot(target: &str) -> anyhow::Result<()> {
   Ok(())
 }
 
-pub fn chroot(target: &str) -> anyhow::Result<()> {
+pub fn invoke_chroot(target: &str) -> anyhow::Result<()> {
   log::info!("Entering chroot environment at {}", target);
   unix::fs::chroot(target)?;
   std::env::set_current_dir("/")?;

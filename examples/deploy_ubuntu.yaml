@@ -10,6 +10,7 @@ recipe:
     with:
       type: tar
       url: https://example.local/ubuntu.tar.gz
+      distro: ubuntu
       disk: /dev/sda
       mount: /mnt
     override:

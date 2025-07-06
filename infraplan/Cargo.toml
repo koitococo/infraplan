@@ -17,3 +17,13 @@ tokio = { version = "1.46.0", features = ["full"] }
 tokio-util = "0.7.15"
 serde_yml = "0.0.12"
 anyhow = "1.0.98"
+reqwest = { version = "0.12.22", features = ["stream"] }
+bytes = "1.10.1"
+async-compression = { version = "0.4.25", features = [
+  "bzip2",
+  "gzip",
+  "tokio",
+  "xz",
+  "zstd",
+] }
+astral-tokio-tar = { git = "https://github.com/koitococo/tokio-tar" }

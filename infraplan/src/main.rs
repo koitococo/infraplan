@@ -1,9 +1,12 @@
 use clap::Parser;
 
-use crate::utils::{elevate_privileges, fstab};
+use crate::{
+  plugins::sys_deploy::tar::{Compression, extract_tarball},
+  utils::elevate_privileges,
+};
 
 pub mod plugins;
-mod utils;
+pub mod utils;
 
 #[derive(Parser, Debug)]
 struct Cli {
@@ -17,12 +20,17 @@ struct Cli {
 #[derive(Parser, Debug)]
 enum Command {
   Apply(ApplyArgs),
+  #[cfg(debug_assertions)]
+  InternalTest(InternalTestArgs),
 }
 
 #[derive(Parser, Debug)]
 struct ApplyArgs {
   path: String,
 }
+
+#[derive(Parser, Debug)]
+struct InternalTestArgs {}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -46,12 +54,38 @@ async fn main() -> anyhow::Result<()> {
   elevate_privileges()?;
   match cli.command {
     Command::Apply(args) => {
-      log::info!("Applying configuration from path: {}", args.path);
-      match plugins::Config::from_path(&args.path) {
-        Ok(config) => config.invoke().await,
-        Err(e) => log::error!("Error reading configuration: {e}"),
-      }
+      args.run().await?;
+    }
+    #[cfg(debug_assertions)]
+    Command::InternalTest(args) => {
+      args.run().await?;
     }
   }
   Ok(())
+}
+
+impl ApplyArgs {
+  async fn run(&self) -> anyhow::Result<()> {
+    log::info!("Applying configuration from path: {}", self.path);
+    match plugins::Config::from_path(&self.path) {
+      Ok(config) => {
+        if let Err(e) = config.invoke().await {
+          log::error!("Error applying configuration: {e}");
+        }
+      }
+      Err(e) => log::error!("Error reading configuration: {e}"),
+    }
+    Ok(())
+  }
+}
+
+#[cfg(debug_assertions)]
+impl InternalTestArgs {
+  async fn run(&self) -> anyhow::Result<()> {
+    log::info!("Running internal tests...");
+
+    extract_tarball("/tmp/test.tar", "/tmp/dest", &None).await?;
+
+    Ok(())
+  }
 }
