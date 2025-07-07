@@ -11,13 +11,14 @@ pub enum ConfigItem {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct Config { 
+pub struct Config {
   pub chroot: Option<String>,
-  pub with: Vec<ConfigItem>
+  pub with: Vec<ConfigItem>,
 }
 
 impl super::Plugin for Config {
   type Context = super::Global;
+
   async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     let ctx = (self.chroot.clone(), ctx.clone());
     for item in &self.with {

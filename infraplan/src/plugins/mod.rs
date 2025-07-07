@@ -108,6 +108,7 @@ pub trait Plugin {
 
 impl Plugin for RecipeConfig {
   type Context = Global;
+
   async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     match self {
       RecipeConfig::SystemDeployer(config) => config.invoke(ctx).await,
@@ -120,6 +121,7 @@ impl Plugin for RecipeConfig {
 
 impl Plugin for Recipe {
   type Context = Global;
+
   async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     log::info!("Invoking recipe: {}", self.name());
 

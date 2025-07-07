@@ -8,6 +8,7 @@ pub enum Config {
 
 impl super::Plugin for Config {
   type Context = super::Global;
+
   async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     match self {
       Config::Kexec(inner) => inner.invoke(ctx).await,

@@ -9,6 +9,7 @@ pub struct Config {
 
 impl crate::plugins::Plugin for Config {
   type Context = crate::plugins::Global;
+
   async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     log::info!("Kexec with config: {self:?}; globals: {ctx:?}");
     // TODO: implement kexec logic here

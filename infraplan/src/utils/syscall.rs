@@ -42,16 +42,17 @@ pub fn mount(blk: Option<&str>, target: &str, fstype: Option<FsType>, flags: boo
     log::info!("Mounting {target} with fstype {:?}", fstype);
   }
 
-  nix::mount::mount::<str, str, str, str>(blk, target, fstype.map(|fs| fs.into()), if flags {
-    MsFlags::MS_MGC_MSK
-  } else {
-    MsFlags::empty()
-  }, None).map_err(
-    |e| {
-      log::error!("Failed to mount {blk:?} on {target}: {}", e);
-      anyhow::anyhow!(e)
-    },
+  nix::mount::mount::<str, str, str, str>(
+    blk,
+    target,
+    fstype.map(|fs| fs.into()),
+    if flags { MsFlags::MS_MGC_MSK } else { MsFlags::empty() },
+    None,
   )
+  .map_err(|e| {
+    log::error!("Failed to mount {blk:?} on {target}: {}", e);
+    anyhow::anyhow!(e)
+  })
 }
 
 pub fn unmount(target: &str) -> anyhow::Result<()> {

@@ -1,5 +1,8 @@
 use crate::utils::{
-  fstab::{find_mountpoint_by_device, is_mountpoint}, join_path, process::run_command, syscall::{mount, unmount_all, FsType}
+  fstab::{find_mountpoint_by_device, is_mountpoint},
+  join_path,
+  process::run_command,
+  syscall::{FsType, mount, unmount_all},
 };
 
 const EXE_PARTED: &str = "parted";
