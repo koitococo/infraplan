@@ -69,7 +69,7 @@ struct HttpStream {
 impl HttpStream {
   async fn fetch(url: &str) -> anyhow::Result<Self> {
     let client = reqwest::Client::new();
-    log::info!("Fetching stream from URL: {}", url);
+    log::info!("Fetching stream from URL: {url}");
     let stream = client.get(url).send().await?.bytes_stream();
     Ok(HttpStream {
       _inner: Box::new(stream),
@@ -86,7 +86,7 @@ impl AsyncRead for HttpStream {
         buf.put_slice(&bytes);
         Poll::Ready(Ok(()))
       }
-      Poll::Ready(Some(Err(e))) => Poll::Ready(Err(io::Error::new(io::ErrorKind::Other, e))),
+      Poll::Ready(Some(Err(e))) => Poll::Ready(Err(io::Error::other(e))),
       Poll::Ready(None) => Poll::Ready(Ok(())),
       Poll::Pending => Poll::Pending,
     }
@@ -161,11 +161,11 @@ impl<S: AsyncBufRead + Unpin> AsyncRead for MaybeCompressedStream<S> {
 
 pub(crate) async fn extract_tarball(url: &str, dest: &str, compression: &Option<Compression>) -> anyhow::Result<()> {
   let backing_stream = if url.starts_with("http://") || url.starts_with("https://") {
-    log::info!("Downloading tarball from {} to {}", url, dest);
+    log::info!("Downloading tarball from {url} to {dest}");
     let http_stream = HttpStream::fetch(url).await?;
     MaybeRemoteStream::Remote(http_stream)
   } else {
-    log::info!("Opening local tarball file: {}", url);
+    log::info!("Opening local tarball file: {url}");
     let file = tokio::fs::File::open(url).await?;
     MaybeRemoteStream::Local(file)
   };

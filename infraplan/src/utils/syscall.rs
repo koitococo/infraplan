@@ -31,12 +31,12 @@ impl From<FsType> for &'static str {
 pub fn mount(blk: &str, target: &str, fstype: FsType) -> anyhow::Result<()> {
   let fstab = get_fstab_entries()?;
   if let Some(m) = fstab.iter().find(|v| v.mount_point == target) {
-    log::info!("Target {} is already mounted, trying to unmount", target);
+    log::info!("Target {target} is already mounted, trying to unmount");
     unmount(m.mount_point.as_str())?;
   }
 
   let fstype: &str = fstype.into();
-  log::info!("Mounting {} on {} as {}", blk, target, fstype);
+  log::info!("Mounting {blk} on {target} as {fstype}");
   std::fs::create_dir_all(target)?;
 
   let r = unsafe {
@@ -57,7 +57,7 @@ pub fn mount(blk: &str, target: &str, fstype: FsType) -> anyhow::Result<()> {
 }
 
 pub fn unmount(target: &str) -> anyhow::Result<()> {
-  log::info!("Unmounting {}", target);
+  log::info!("Unmounting {target}");
   let r = unsafe { libc::umount(CString::new(target)?.as_ptr()) };
   if r != 0 {
     let err = std::io::Error::last_os_error();

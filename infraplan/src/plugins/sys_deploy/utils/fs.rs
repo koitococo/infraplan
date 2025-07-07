@@ -151,13 +151,13 @@ pub async fn prepare_disk(disk: &str, use_mdev: bool, use_udev: bool, target: &s
   let rootfs_path = format!("/dev/disk/by-partuuid/{}", parts[2]);
 
   format_efi_part(efi_path.as_str()).await?;
-  log::info!("Formatted EFI partition at {}", efi_path);
+  log::info!("Formatted EFI partition at {efi_path}");
   format_boot_part(boot_path.as_str()).await?;
-  log::info!("Formatted boot partition at {}", boot_path);
+  log::info!("Formatted boot partition at {boot_path}");
   format_root_part(rootfs_path.as_str()).await?;
 
   mount(rootfs_path.as_str(), target, FsType::Ext4)?;
-  log::info!("Mounted root filesystem at {}", target);
+  log::info!("Mounted root filesystem at {target}");
 
   mount(boot_path.as_str(), join_path(target, "boot").as_ref(), FsType::Ext4)?;
   log::info!("Mounted boot partition at {}", join_path(target, "boot"));

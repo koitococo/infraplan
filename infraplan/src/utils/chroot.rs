@@ -7,7 +7,7 @@ use crate::utils::{
 
 pub fn prepare_chroot(target: &str) -> anyhow::Result<()> {
   // FIXME: Safety: The function assumes the target is not existed or a directory that is NOT a mountpoint. Checks should be added.
-  log::info!("Preparing chroot environment at {}", target);
+  log::info!("Preparing chroot environment at {target}");
   mount("none", join_path(target, "tmp").as_str(), FsType::Tmpfs)?;
   mount("none", join_path(target, "run").as_str(), FsType::Tmpfs)?;
   mount("none", join_path(target, "proc").as_str(), FsType::Proc)?;
@@ -20,19 +20,19 @@ pub fn prepare_chroot(target: &str) -> anyhow::Result<()> {
 }
 
 pub fn invoke_chroot(target: &str) -> anyhow::Result<()> {
-  log::info!("Entering chroot environment at {}", target);
+  log::info!("Entering chroot environment at {target}");
   unix::fs::chroot(target)?;
   std::env::set_current_dir("/")?;
   Ok(())
 }
 
 pub fn cleanup_chroot(target: &str) -> anyhow::Result<()> {
-  log::info!("Cleaning up chroot environment at {}", target);
+  log::info!("Cleaning up chroot environment at {target}");
   let mounts = ["tmp", "run", "proc", "sys", "dev", "dev/pts", "dev/shm", "sys/firmware/efi"];
   for mount in mounts {
     let path = join_path(target, mount);
     if let Err(e) = unmount(&path) {
-      log::warn!("Failed to unmount {}: {}", path, e);
+      log::warn!("Failed to unmount {path}: {e}");
     }
   }
   Ok(())

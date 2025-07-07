@@ -13,19 +13,19 @@ pub async fn postinst(mountpoint: &str, distro: &Distro) -> anyhow::Result<()> {
   if child_pid == 0 {
     // Child process
     if prepare_chroot(mountpoint).is_err() {
-      log::error!("Failed to prepare chroot environment at {}", mountpoint);
+      log::error!("Failed to prepare chroot environment at {mountpoint}");
       exit(127);
     }
     if invoke_chroot(mountpoint).is_err() {
-      log::error!("Failed to invoke chroot at {}", mountpoint);
+      log::error!("Failed to invoke chroot at {mountpoint}");
       exit(126);
     }
     if after_chroot(distro).await.is_err() {
-      log::error!("Failed to finalize chroot environment at {}", mountpoint);
+      log::error!("Failed to finalize chroot environment at {mountpoint}");
       exit(1);
     }
     if cleanup_chroot(mountpoint).is_err() {
-      log::error!("Failed to clean up chroot environment at {}", mountpoint);
+      log::error!("Failed to clean up chroot environment at {mountpoint}");
       exit(125);
     }
     exit(0);
@@ -40,7 +40,7 @@ async fn after_chroot(distro: &Distro) -> anyhow::Result<()> {
     Distro::Ubuntu => postinst_ubuntu().await,
     _ => {
       // TODO: Implement post-installation steps for other distros
-      log::warn!("No post-installation steps defined for distro: {:?}", distro);
+      log::warn!("No post-installation steps defined for distro: {distro:?}");
       Ok(())
     }
   }

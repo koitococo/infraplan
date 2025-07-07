@@ -28,6 +28,7 @@ jobs:
         with:
           toolchain: nightly
           targets: ${{ matrix.target }}
+          components: clippy, rustfmt
 
       - name: Install musl toolchain
         if: endsWith(matrix.target, '-linux-musl')
