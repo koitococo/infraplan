@@ -1,7 +1,7 @@
 use clap::Parser;
 
 use crate::{
-  plugins::sys_deploy::tar::{Compression, extract_tarball},
+  plugins::sys_deploy::tar::extract_tarball,
   utils::elevate_privileges,
 };
 
@@ -20,6 +20,7 @@ struct Cli {
 #[derive(Parser, Debug)]
 enum Command {
   Apply(ApplyArgs),
+  
   #[cfg(debug_assertions)]
   InternalTest(InternalTestArgs),
 }

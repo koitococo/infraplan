@@ -80,9 +80,13 @@ pub async fn format_ext4(part: &str, label: &str, workarounds: Option<Vec<&str>>
   Ok(())
 }
 
-pub async fn format_boot_part(part: &str) -> anyhow::Result<()> { format_ext4(part, "boot", Some(vec!["^metadata_csum_seed", "^orphan_file"])).await }
+pub async fn format_boot_part(part: &str) -> anyhow::Result<()> {
+  format_ext4(part, "boot", Some(vec!["^metadata_csum_seed", "^orphan_file"])).await
+}
 
-pub async fn format_root_part(part: &str) -> anyhow::Result<()> { format_ext4(part, "root", Some(vec!["^orphan_file"])).await }
+pub async fn format_root_part(part: &str) -> anyhow::Result<()> {
+  format_ext4(part, "root", Some(vec!["^orphan_file"])).await
+}
 
 use serde::{Deserialize, Serialize};
 
@@ -182,7 +186,11 @@ PARTUUID={} /boot/efi vfat defaults 0 2"#,
 pub async fn write_fstab(disk: &str, target: &str) -> anyhow::Result<()> {
   let fstab_content = generate_fstab(disk).await?;
   let fstab_path = join_path(target, "etc/fstab");
-  std::fs::create_dir_all(std::path::Path::new(&fstab_path).parent().ok_or(anyhow::anyhow!("Failed to get parent directory"))?)?;
+  std::fs::create_dir_all(
+    std::path::Path::new(&fstab_path)
+      .parent()
+      .ok_or(anyhow::anyhow!("Failed to get parent directory"))?,
+  )?;
   std::fs::write(&fstab_path, fstab_content)?;
   log::info!("Wrote fstab to {}", &fstab_path);
   Ok(())

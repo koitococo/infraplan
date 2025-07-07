@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use nix::unistd::Uid;
 
 pub mod chroot;
+pub mod fstab;
 pub mod process;
 pub mod syscall;
-pub mod fstab;
 
 pub fn join_path(base: &str, path: &str) -> String {
   let mut full_path: PathBuf = PathBuf::from(base);

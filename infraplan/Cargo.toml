@@ -3,6 +3,7 @@ name = "infraplan"
 version = "0.1.0"
 edition = "2024"
 authors = ["Koi to Coco<koitococo@outlook.com>"]
+license = "MPL-2.0"
 
 [dependencies]
 clap = { version = "4.5.40", features = ["cargo", "derive"] }

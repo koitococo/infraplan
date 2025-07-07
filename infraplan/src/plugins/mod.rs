@@ -73,7 +73,11 @@ impl Config {
     log::debug!("Invoking configuration: {self:?}");
     for recipe in &self.recipe {
       if let Err(e) = recipe.invoke(self.global.as_ref().unwrap_or(&Global { distro_hint: None })).await {
-        log::error!("Failed to invoke recipe {}: {}", recipe.name.as_deref().unwrap_or(&recipe.id), e);
+        log::error!(
+          "Failed to invoke recipe {}: {}",
+          recipe.name.as_deref().unwrap_or(&recipe.id),
+          e
+        );
         return Err(e);
       }
     }
@@ -232,7 +236,8 @@ mod tests {
 
     for entry in files {
       let config_path = entry.unwrap().path();
-      let config = Config::from_path(&config_path).expect(format!("Failed to load config: {}", config_path.display()).as_str());
+      let config =
+        Config::from_path(&config_path).expect(format!("Failed to load config: {}", config_path.display()).as_str());
       println!("{:#?}", config);
     }
   }

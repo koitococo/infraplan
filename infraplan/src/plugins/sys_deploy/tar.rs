@@ -41,11 +41,20 @@ impl crate::plugins::Plugin for Config {
       Some(Distro::Alpine) => (true, false), // Alpine uses mdev
       Some(Distro::Arch) | Some(Distro::Debian) | Some(Distro::Fedora) | Some(Distro::Ubuntu) => (false, true), // Arch, Debian, Fedora, and Ubuntu use udev
       _ => {
-        log::warn!("Unknown distro hint: {:?}, defaulting to no mdev or udev", global.distro_hint);
+        log::warn!(
+          "Unknown distro hint: {:?}, defaulting to no mdev or udev",
+          global.distro_hint
+        );
         (false, false)
       } // Unknown or unspecified distro, default to no mdev or udev
     };
-    prepare_disk(self.common.disk.as_str(), use_mdev, use_udev, self.common.mount.as_str()).await?;
+    prepare_disk(
+      self.common.disk.as_str(),
+      use_mdev,
+      use_udev,
+      self.common.mount.as_str(),
+    )
+    .await?;
     extract_tarball(self.url.as_str(), self.common.mount.as_str(), &self.compression).await?;
     write_fstab(self.common.disk.as_str(), self.common.mount.as_str()).await?;
     postinst(self.common.mount.as_str(), &self.common.distro).await?;
@@ -62,12 +71,16 @@ impl HttpStream {
     let client = reqwest::Client::new();
     log::info!("Fetching stream from URL: {}", url);
     let stream = client.get(url).send().await?.bytes_stream();
-    Ok(HttpStream { _inner: Box::new(stream) })
+    Ok(HttpStream {
+      _inner: Box::new(stream),
+    })
   }
 }
 
 impl AsyncRead for HttpStream {
-  fn poll_read(mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut tokio::io::ReadBuf<'_>) -> Poll<io::Result<()>> {
+  fn poll_read(
+    mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut tokio::io::ReadBuf<'_>,
+  ) -> Poll<io::Result<()>> {
     match self._inner.poll_next_unpin(cx) {
       Poll::Ready(Some(Ok(bytes))) => {
         buf.put_slice(&bytes);
@@ -86,7 +99,9 @@ enum MaybeRemoteStream {
 }
 
 impl AsyncRead for MaybeRemoteStream {
-  fn poll_read(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut tokio::io::ReadBuf<'_>) -> std::task::Poll<std::io::Result<()>> {
+  fn poll_read(
+    self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut tokio::io::ReadBuf<'_>,
+  ) -> std::task::Poll<std::io::Result<()>> {
     let this = self.get_mut();
     match this {
       MaybeRemoteStream::Local(file) => {
@@ -111,7 +126,9 @@ enum MaybeCompressedStream<S> {
 }
 
 impl<S: AsyncBufRead + Unpin> AsyncRead for MaybeCompressedStream<S> {
-  fn poll_read(self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut tokio::io::ReadBuf<'_>) -> std::task::Poll<std::io::Result<()>> {
+  fn poll_read(
+    self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut tokio::io::ReadBuf<'_>,
+  ) -> std::task::Poll<std::io::Result<()>> {
     let this = self.get_mut();
     match this {
       MaybeCompressedStream::Plain(stream) => {

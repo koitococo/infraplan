@@ -7,7 +7,7 @@ mod utils;
 pub struct CommonConfig {
   pub disk: String,
   pub mount: String,
-  pub distro: Distro
+  pub distro: Distro,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
