@@ -1,7 +1,8 @@
-use std::ffi::CString;
+use nix::mount::MsFlags;
 
-use crate::utils::fstab::get_fstab_entries;
+use crate::utils::fstab::{get_fstab_entries, is_mountpoint};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FsType {
   Vfat,
   Ext4,
@@ -28,52 +29,47 @@ impl From<FsType> for &'static str {
   }
 }
 
-pub fn mount(blk: &str, target: &str, fstype: FsType) -> anyhow::Result<()> {
-  let fstab = get_fstab_entries()?;
-  if let Some(m) = fstab.iter().find(|v| v.mount_point == target) {
+pub fn mount(blk: Option<&str>, target: &str, fstype: Option<FsType>, flags: bool) -> anyhow::Result<()> {
+  if is_mountpoint(target)? {
     log::info!("Target {target} is already mounted, trying to unmount");
-    unmount(m.mount_point.as_str())?;
+    unmount(target)?;
   }
-
-  let fstype: &str = fstype.into();
-  log::info!("Mounting {blk} on {target} as {fstype}");
   std::fs::create_dir_all(target)?;
 
-  let r = unsafe {
-    libc::mount(
-      CString::new(blk)?.as_ptr(),
-      CString::new(target)?.as_ptr(),
-      CString::new(fstype)?.as_ptr(),
-      libc::MS_MGC_MSK,
-      std::ptr::null(),
-    )
-  };
-  if r != 0 {
-    let err = std::io::Error::last_os_error();
-    log::error!("Failed to mount {} on {} as {}: {}", blk, target, fstype, &err);
-    return Err(anyhow::anyhow!(err));
+  if let Some(blk) = blk.as_ref() {
+    log::info!("Mounting {blk} on {target} with fstype {:?}", fstype);
+  } else {
+    log::info!("Mounting {target} with fstype {:?}", fstype);
   }
-  Ok(())
+
+  nix::mount::mount::<str, str, str, str>(blk, target, fstype.map(|fs| fs.into()), if flags {
+    MsFlags::MS_MGC_MSK
+  } else {
+    MsFlags::empty()
+  }, None).map_err(
+    |e| {
+      log::error!("Failed to mount {blk:?} on {target}: {}", e);
+      anyhow::anyhow!(e)
+    },
+  )
 }
 
 pub fn unmount(target: &str) -> anyhow::Result<()> {
   log::info!("Unmounting {target}");
-  let r = unsafe { libc::umount(CString::new(target)?.as_ptr()) };
-  if r != 0 {
-    let err = std::io::Error::last_os_error();
-    log::error!("Failed to unmount {}: {}", target, &err);
-    return Err(anyhow::anyhow!(err));
+  nix::mount::umount(target).map_err(|e| {
+    log::error!("Failed to unmount {}: {}", target, e);
+    anyhow::anyhow!(e)
+  })
+}
+
+pub fn unmount_all(target: &str) -> anyhow::Result<()> {
+  log::info!("Unmounting all mounts on {target}");
+  let mut fstab = get_fstab_entries()?;
+  fstab.reverse();
+  for entry in fstab {
+    if entry.mount_point.starts_with(target) {
+      unmount(entry.mount_point.as_str())?;
+    }
   }
   Ok(())
 }
-
-// pub fn chroot(target: &str) -> anyhow::Result<()> {
-//   log::info!("Changing root to {}", target);
-//   let r = unsafe { libc::chroot(CString::new(target)?.as_ptr()) };
-//   if r != 0 {
-//     let err = std::io::Error::last_os_error();
-//     log::error!("Failed to change root to {}: {}", target, &err);
-//     return Err(anyhow::anyhow!(err));
-//   }
-//   Ok(())
-// }

@@ -1,5 +1,7 @@
 use std::os::unix;
 
+use tokio::process::Command;
+
 use crate::utils::{
   join_path,
   syscall::{FsType, mount, unmount},
@@ -8,21 +10,19 @@ use crate::utils::{
 pub fn prepare_chroot(target: &str) -> anyhow::Result<()> {
   // FIXME: Safety: The function assumes the target is not existed or a directory that is NOT a mountpoint. Checks should be added.
   log::info!("Preparing chroot environment at {target}");
-  mount("none", join_path(target, "tmp").as_str(), FsType::Tmpfs)?;
-  mount("none", join_path(target, "run").as_str(), FsType::Tmpfs)?;
-  mount("none", join_path(target, "proc").as_str(), FsType::Proc)?;
-  mount("none", join_path(target, "sys").as_str(), FsType::Sysfs)?;
-  mount("none", join_path(target, "dev").as_str(), FsType::Devtmpfs)?;
-  mount("none", join_path(target, "dev/pts").as_str(), FsType::Devpts)?;
-  mount("none", join_path(target, "dev/shm").as_str(), FsType::Tmpfs)?;
-  mount("none", join_path(target, "sys/firmware/efi").as_str(), FsType::Efivarfs)?;
-  Ok(())
-}
-
-pub fn invoke_chroot(target: &str) -> anyhow::Result<()> {
-  log::info!("Entering chroot environment at {target}");
-  unix::fs::chroot(target)?;
-  std::env::set_current_dir("/")?;
+  mount(None, join_path(target, "tmp").as_str(), Some(FsType::Tmpfs), false)?;
+  mount(None, join_path(target, "run").as_str(), Some(FsType::Tmpfs), false)?;
+  mount(None, join_path(target, "proc").as_str(), Some(FsType::Proc), false)?;
+  mount(None, join_path(target, "sys").as_str(), Some(FsType::Sysfs), false)?;
+  mount(None, join_path(target, "dev").as_str(), Some(FsType::Devtmpfs), false)?;
+  mount(None, join_path(target, "dev/pts").as_str(), Some(FsType::Devpts), false)?;
+  mount(None, join_path(target, "dev/shm").as_str(), Some(FsType::Tmpfs), false)?;
+  mount(
+    None,
+    join_path(target, "sys/firmware/efi").as_str(),
+    Some(FsType::Efivarfs),
+    false,
+  )?;
   Ok(())
 }
 
@@ -36,4 +36,29 @@ pub fn cleanup_chroot(target: &str) -> anyhow::Result<()> {
     }
   }
   Ok(())
+}
+
+pub async fn run_command_chroot(command: &str, args: &[&str], new_root: &str) -> anyhow::Result<(i32, String, String)> {
+  log::info!("Running command: {command} {args:?}");
+  let new_root = new_root.to_owned();
+  let mut cmd = Command::new(command);
+  cmd.args(args);
+  cmd.env("PATH", "/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin");
+  cmd.current_dir(new_root.clone());
+  unsafe {
+    cmd.pre_exec(move || {
+      unix::fs::chroot(&new_root)?;
+      std::env::set_current_dir("/")?;
+      Ok(())
+    });
+  }
+  let Ok(output) = cmd.output().await else {
+    log::error!("Failed to run command: {command} {args:?}");
+    anyhow::bail!("Failed to run command: {command} {args:?}");
+  };
+  let status = output.status.code().unwrap_or(-1);
+  let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+  let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+  log::info!("Command finished with status {status}: {stderr}");
+  Ok((status, stdout, stderr))
 }

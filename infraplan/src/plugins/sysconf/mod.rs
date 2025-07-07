@@ -10,15 +10,21 @@ pub enum ConfigItem {
   AptRepo(apt_repo::Config),
 }
 
-pub type Config = Vec<ConfigItem>;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct Config { 
+  pub chroot: Option<String>,
+  pub with: Vec<ConfigItem>
+}
 
 impl super::Plugin for Config {
-  async fn invoke(&self, global: &super::Global) -> anyhow::Result<()> {
-    for item in self {
+  type Context = super::Global;
+  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
+    let ctx = (self.chroot.clone(), ctx.clone());
+    for item in &self.with {
       match item {
-        ConfigItem::Netplan(config) => config.invoke(global).await?,
-        ConfigItem::User(config) => config.invoke(global).await?,
-        ConfigItem::AptRepo(config) => config.invoke(global).await?,
+        ConfigItem::Netplan(config) => config.invoke(&ctx).await?,
+        ConfigItem::User(config) => config.invoke(&ctx).await?,
+        ConfigItem::AptRepo(config) => config.invoke(&ctx).await?,
       }
     }
     Ok(())

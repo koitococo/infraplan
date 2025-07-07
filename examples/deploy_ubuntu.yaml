@@ -18,38 +18,39 @@ recipe:
   - id: system_reconfigure
     name: Reconfigure ubuntu
     use: system_reconfigurator
-    # chroot: /mnt
     with:
-      - use: netplan
-        with:
-          - type: dhcp
-            interface: eth0
-          - type: static
-            interface: eth1
-            address: 172.16.200.1
-      - use: user
-        with:
-          - name: root
-            password: root
-          - name: ubuntu
-            password: ubuntu
-            groups:
-              - sudo
-      - use: apt_repo
-        with:
-          - overwrite: true
-            base_url: https://archive.ubuntu.com/ubuntu
-            distro: nobel
-            components:
-              - main
-              - universe
-              - restricted
-              - multiverse
-          - name: docker
-            base_url: https://download.docker.com/linux/debian
-            distro: nobel
-            components:
-              - stable
+      chroot: /mnt
+      with:
+        - use: netplan
+          with:
+            - type: dhcp
+              interface: eth0
+            - type: static
+              interface: eth1
+              address: 172.16.200.1
+        - use: user
+          with:
+            - name: root
+              password: root
+            - name: ubuntu
+              password: ubuntu
+              groups:
+                - sudo
+        - use: apt_repo
+          with:
+            - overwrite: true
+              base_url: https://archive.ubuntu.com/ubuntu
+              distro: nobel
+              components:
+                - main
+                - universe
+                - restricted
+                - multiverse
+            - name: docker
+              base_url: https://download.docker.com/linux/debian
+              distro: nobel
+              components:
+                - stable
   - id: reboot
     name: Reboot system
     use: reboot

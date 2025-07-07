@@ -6,8 +6,10 @@ pub struct Config {
 }
 
 impl super::Plugin for Config {
-  async fn invoke(&self, global: &super::Global) -> anyhow::Result<()> {
-    log::info!("Package Manager with config: {self:?}; globals: {global:?}");
+  type Context = super::Global;
+
+  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
+    log::info!("Package Manager with config: {self:?}; globals: {ctx:?}");
     // TODO: implement package management logic here
     Ok(())
   }

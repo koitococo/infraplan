@@ -33,17 +33,18 @@ pub struct Config {
 }
 
 impl crate::plugins::Plugin for Config {
-  async fn invoke(&self, global: &crate::plugins::Global) -> anyhow::Result<()> {
-    log::info!("System Deployer with config: {self:?}; globals: {global:?}");
+  type Context = crate::plugins::Global;
+  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
+    log::info!("System Deployer with config: {self:?}; globals: {ctx:?}");
     // TODO: implement system deployment logic here
 
-    let (use_mdev, use_udev) = match global.distro_hint.as_ref() {
+    let (use_mdev, use_udev) = match ctx.distro_hint.as_ref() {
       Some(Distro::Alpine) => (true, false), // Alpine uses mdev
       Some(Distro::Arch) | Some(Distro::Debian) | Some(Distro::Fedora) | Some(Distro::Ubuntu) => (false, true), // Arch, Debian, Fedora, and Ubuntu use udev
       _ => {
         log::warn!(
           "Unknown distro hint: {:?}, defaulting to no mdev or udev",
-          global.distro_hint
+          ctx.distro_hint
         );
         (false, false)
       } // Unknown or unspecified distro, default to no mdev or udev
@@ -64,6 +65,7 @@ impl crate::plugins::Plugin for Config {
 
 struct HttpStream {
   _inner: Box<dyn Stream<Item = Result<Bytes, reqwest::Error>> + Unpin>,
+  _buf: Option<Bytes>,
 }
 
 impl HttpStream {
@@ -73,6 +75,7 @@ impl HttpStream {
     let stream = client.get(url).send().await?.bytes_stream();
     Ok(HttpStream {
       _inner: Box::new(stream),
+      _buf: None,
     })
   }
 }
@@ -81,10 +84,23 @@ impl AsyncRead for HttpStream {
   fn poll_read(
     mut self: std::pin::Pin<&mut Self>, cx: &mut std::task::Context<'_>, buf: &mut tokio::io::ReadBuf<'_>,
   ) -> Poll<io::Result<()>> {
+    if let Some(mut r_buf) = self._buf.take() {
+      let max_len = buf.remaining();
+      if r_buf.len() > max_len {
+        self._buf = Some(r_buf.split_off(max_len));
+      }
+      buf.put_slice(&r_buf);
+      return Poll::Ready(Ok(()));
+    }
+
     match self._inner.poll_next_unpin(cx) {
-      Poll::Ready(Some(Ok(bytes))) => {
-        buf.put_slice(&bytes);
-        Poll::Ready(Ok(()))
+      Poll::Ready(Some(Ok(mut r_buf))) => {
+        let max_len = buf.remaining();
+        if r_buf.len() > max_len {
+          self._buf = Some(r_buf.split_off(max_len));
+        }
+        buf.put_slice(&r_buf);
+        return Poll::Ready(Ok(()));
       }
       Poll::Ready(Some(Err(e))) => Poll::Ready(Err(io::Error::other(e))),
       Poll::Ready(None) => Poll::Ready(Ok(())),

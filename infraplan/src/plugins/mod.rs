@@ -33,7 +33,6 @@ pub enum Distro {
 pub struct Recipe {
   pub id: String,
   pub name: Option<String>,
-  pub chroot: Option<String>,
   pub overrides: Option<Global>,
 
   #[serde(flatten)]
@@ -103,28 +102,28 @@ impl Recipe {
 }
 
 pub trait Plugin {
-  async fn invoke(&self, global: &Global) -> anyhow::Result<()>;
+  type Context;
+  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()>;
 }
 
 impl Plugin for RecipeConfig {
-  async fn invoke(&self, global: &Global) -> anyhow::Result<()> {
+  type Context = Global;
+  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     match self {
-      RecipeConfig::SystemDeployer(config) => config.invoke(global).await,
-      RecipeConfig::PackageManager(config) => config.invoke(global).await,
-      RecipeConfig::Reboot(config) => config.invoke(global).await,
-      RecipeConfig::SystemReconfigurator(config) => config.invoke(global).await,
+      RecipeConfig::SystemDeployer(config) => config.invoke(ctx).await,
+      RecipeConfig::PackageManager(config) => config.invoke(ctx).await,
+      RecipeConfig::Reboot(config) => config.invoke(ctx).await,
+      RecipeConfig::SystemReconfigurator(config) => config.invoke(ctx).await,
     }
   }
 }
 
 impl Plugin for Recipe {
-  async fn invoke(&self, global: &Global) -> anyhow::Result<()> {
+  type Context = Global;
+  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     log::info!("Invoking recipe: {}", self.name());
 
-    let global = global.clone_with_overrides(&self.overrides);
-    if self.chroot.is_some() {
-      anyhow::bail!("Chroot is not supported yet. Recipe: {}", self.name());
-    }
+    let global = ctx.clone_with_overrides(&self.overrides);
     self.recipe_config.invoke(&global).await
   }
 }
@@ -146,7 +145,6 @@ mod tests {
         Recipe {
           id: "system_deploy".to_string(),
           name: Some("Deploy ubuntu".to_string()),
-          chroot: None,
           overrides: None,
           recipe_config: RecipeConfig::SystemDeployer(sys_deploy::Config::Tar(sys_deploy::tar::Config {
             url: "https://example.local/ubuntu.tar.zstd".to_string(),
@@ -161,33 +159,34 @@ mod tests {
         Recipe {
           id: "system_reconfig".to_string(),
           name: Some("Reconfigure system".to_string()),
-          chroot: Some("/mnt".to_string()),
           overrides: None,
-          recipe_config: RecipeConfig::SystemReconfigurator(vec![
-            sysconf::ConfigItem::Netplan(vec![sysconf::netplan::ConfigItem {
-              type_: "static".to_string(),
-              interface: "eth0".to_string(),
-              address: Some("172.16.1.1".to_string()),
-            }]),
-            sysconf::ConfigItem::User(vec![sysconf::user::ConfigItem {
-              name: "ubuntu".to_string(),
-              password: Some("password".to_string()),
-              groups: Some(vec!["sudo".to_string(), "docker".to_string()]),
-            }]),
-            sysconf::ConfigItem::AptRepo(vec![sysconf::apt_repo::ConfigItem {
-              overwrite: Some(true),
-              name: Some("Ubuntu Archive".to_string()),
-              base_url: "http://archive.ubuntu.com/ubuntu/".to_string(),
-              distro: "focal".to_string(),
-              components: vec!["main".to_string(), "universe".to_string()],
-            }]),
-          ]),
+          recipe_config: RecipeConfig::SystemReconfigurator(sysconf::Config {
+            chroot: Some("/mnt".to_string()),
+            with: vec![
+              sysconf::ConfigItem::Netplan(vec![sysconf::netplan::ConfigItem {
+                type_: "static".to_string(),
+                interface: "eth0".to_string(),
+                address: Some("172.16.1.1".to_string()),
+              }]),
+              sysconf::ConfigItem::User(vec![sysconf::user::ConfigItem {
+                name: "ubuntu".to_string(),
+                password: Some("password".to_string()),
+                groups: Some(vec!["sudo".to_string(), "docker".to_string()]),
+              }]),
+              sysconf::ConfigItem::AptRepo(vec![sysconf::apt_repo::ConfigItem {
+                overwrite: Some(true),
+                name: Some("Ubuntu Archive".to_string()),
+                base_url: "http://archive.ubuntu.com/ubuntu/".to_string(),
+                distro: "focal".to_string(),
+                components: vec!["main".to_string(), "universe".to_string()],
+              }]),
+            ],
+          }),
         },
         Recipe {
           id: "reboot".to_string(),
           name: Some("Reboot system".to_string()),
           overrides: None,
-          chroot: None,
           recipe_config: RecipeConfig::Reboot(reboot::Config::Kexec(reboot::kexec::Config {
             linux: "/mnt/boot/vmlinuz".to_string(),
             initrd: "/mnt/boot/initrd.img".to_string(),
@@ -200,7 +199,6 @@ mod tests {
           id: "install_packages".to_string(),
           name: Some("Install packages".to_string()),
           overrides: None,
-          chroot: None,
           recipe_config: RecipeConfig::PackageManager(pkgmgr::Config {
             install: Some(vec![
               "vim".to_string(),

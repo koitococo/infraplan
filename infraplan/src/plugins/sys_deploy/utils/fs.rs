@@ -1,7 +1,5 @@
 use crate::utils::{
-  join_path,
-  process::run_command,
-  syscall::{FsType, mount},
+  fstab::{find_mountpoint_by_device, is_mountpoint}, join_path, process::run_command, syscall::{mount, unmount_all, FsType}
 };
 
 const EXE_PARTED: &str = "parted";
@@ -44,7 +42,7 @@ pub async fn refresh_partition_table(disk: &str, use_mdev: bool, use_udev: bool)
     }
   }
   if use_udev {
-    let (code, _, stderr) = run_command(EXE_UDEVADM, &["trigger"]).await?;
+    let (code, _, stderr) = run_command(EXE_UDEVADM, &["trigger", "--type=all", "--settle"]).await?;
     if code != 0 {
       anyhow::bail!("Failed to run udevadm trigger: {}", stderr);
     }
@@ -90,12 +88,12 @@ pub async fn format_root_part(part: &str) -> anyhow::Result<()> {
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PartedOutputs {
   disk: PartedDisk,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PartedDisk {
   path: String,
@@ -110,7 +108,7 @@ pub struct PartedDisk {
   partitions: Vec<PartedPartition>,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct PartedPartition {
   number: i64,
@@ -122,7 +120,7 @@ pub struct PartedPartition {
   type_uuid: String,
   uuid: String,
   name: Option<String>,
-  filesystem: String,
+  filesystem: Option<String>,
   flags: Option<Vec<String>>,
 }
 
@@ -137,7 +135,34 @@ pub async fn get_parted_outputs(disk: &str) -> anyhow::Result<PartedOutputs> {
   Ok(outputs)
 }
 
+pub async fn block_for_disk_ready(disk: &str) -> anyhow::Result<()> {
+  log::debug!("Blocking for disk {disk} to be ready");
+  loop {
+    let d = tokio::fs::try_exists(disk).await?;
+    if d {
+      break;
+    }
+    tokio::select! {
+      _ = tokio::time::sleep(tokio::time::Duration::from_millis(1000)) => {}
+      _ = tokio::signal::ctrl_c() => {
+        log::warn!("Interrupted while waiting for disk {disk} to be ready");
+        return Err(anyhow::anyhow!("Interrupted while waiting for disk {disk} to be ready"));
+      }
+    }
+  }
+  Ok(())
+}
+
 pub async fn prepare_disk(disk: &str, use_mdev: bool, use_udev: bool, target: &str) -> anyhow::Result<()> {
+  if is_mountpoint(target)? {
+    unmount_all(target)?;
+  }
+
+  for mp in find_mountpoint_by_device(disk)? {
+    log::info!("Found mount point for {disk}: {}", mp.mount_point);
+    unmount_all(mp.mount_point.as_str())?;
+  }
+
   create_partition_table(disk).await?;
   refresh_partition_table(disk, use_mdev, use_udev).await?;
 
@@ -150,19 +175,35 @@ pub async fn prepare_disk(disk: &str, use_mdev: bool, use_udev: bool, target: &s
   let boot_path = format!("/dev/disk/by-partuuid/{}", parts[1]);
   let rootfs_path = format!("/dev/disk/by-partuuid/{}", parts[2]);
 
+  block_for_disk_ready(efi_path.as_str()).await?;
   format_efi_part(efi_path.as_str()).await?;
   log::info!("Formatted EFI partition at {efi_path}");
+
+  block_for_disk_ready(boot_path.as_str()).await?;
   format_boot_part(boot_path.as_str()).await?;
   log::info!("Formatted boot partition at {boot_path}");
-  format_root_part(rootfs_path.as_str()).await?;
 
-  mount(rootfs_path.as_str(), target, FsType::Ext4)?;
+  block_for_disk_ready(rootfs_path.as_str()).await?;
+  format_root_part(rootfs_path.as_str()).await?;
+  log::info!("Formatted root filesystem at {rootfs_path}");
+
+  mount(Some(rootfs_path.as_str()), target, Some(FsType::Ext4), false)?;
   log::info!("Mounted root filesystem at {target}");
 
-  mount(boot_path.as_str(), join_path(target, "boot").as_ref(), FsType::Ext4)?;
+  mount(
+    Some(boot_path.as_str()),
+    join_path(target, "boot").as_ref(),
+    Some(FsType::Ext4),
+    false,
+  )?;
   log::info!("Mounted boot partition at {}", join_path(target, "boot"));
 
-  mount(efi_path.as_str(), join_path(target, "boot/efi").as_ref(), FsType::Vfat)?;
+  mount(
+    Some(efi_path.as_str()),
+    join_path(target, "boot/efi").as_ref(),
+    Some(FsType::Vfat),
+    false,
+  )?;
   log::info!("Mounted EFI partition at {}", join_path(target, "boot/efi"));
   Ok(())
 }
@@ -194,4 +235,17 @@ pub async fn write_fstab(disk: &str, target: &str) -> anyhow::Result<()> {
   std::fs::write(&fstab_path, fstab_content)?;
   log::info!("Wrote fstab to {}", &fstab_path);
   Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn test_deserialize_parted_outputs() {
+    let output = r#"{"disk":{"path":"/dev/vdb","size":"10.7GB","model":"Virtio Block Device","transport":"virtblk","logical-sector-size":512,"physical-sector-size":512,"label":"gpt","uuid":"b1d47f57-77b8-4ce4-8f50-94f1a90e2ac4","max-partitions":128,"partitions":[{"number":1,"start":"1049kB","end":"537MB","size":"536MB","type":"primary","type-uuid":"c12a7328-f81f-11d2-ba4b-00a0c93ec93b","uuid":"7ad09dd4-bad0-4006-9af7-1981d0bc3c04","name":"primary","flags":["boot","esp"]},{"number":2,"start":"537MB","end":"2147MB","size":"1611MB","type":"primary","type-uuid":"0fc63daf-8483-4772-8e79-3d69d8477de4","uuid":"9ab37551-6643-4e99-bf30-ecfbcff3a08c","name":"primary"},{"number":3,"start":"2147MB","end":"10.7GB","size":"8589MB","type":"primary","type-uuid":"0fc63daf-8483-4772-8e79-3d69d8477de4","uuid":"dd539350-c688-4ed2-9bc8-621e89eb6bb0","name":"primary"}]}}"#;
+
+    let parted_outputs: PartedOutputs = serde_json::from_str(output).expect("Failed to deserialize PartedOutputs");
+    println!("{parted_outputs:#?}");
+  }
 }

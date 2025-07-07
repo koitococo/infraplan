@@ -17,9 +17,10 @@ pub enum Config {
 }
 
 impl super::Plugin for Config {
-  async fn invoke(&self, global: &super::Global) -> anyhow::Result<()> {
+  type Context = super::Global;
+  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     match self {
-      Config::Tar(inner) => inner.invoke(global).await,
+      Config::Tar(inner) => inner.invoke(ctx ).await,
     }
   }
 }
