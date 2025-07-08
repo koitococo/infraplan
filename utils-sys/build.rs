@@ -23,7 +23,7 @@ fn main() {
   println!("cargo:rustc-link-lib=stdc++");
 
   // Run `clang` to compile the `utils.cpp` file into a `utils.o` object file. Panic if it is not possible to spawn the process.
-  std::process::Command::new("clang++")
+  if !std::process::Command::new("clang++")
     .args(vec!["-c", "-x", "c++", "-std=c++17", "-fPIC", "-static", "-o"])
     .arg(&obj_path)
     .arg(src_path.join("utils.cpp"))
