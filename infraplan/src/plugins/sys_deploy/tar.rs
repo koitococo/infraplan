@@ -100,7 +100,7 @@ impl AsyncRead for HttpStream {
           self._buf = Some(r_buf.split_off(max_len));
         }
         buf.put_slice(&r_buf);
-        return Poll::Ready(Ok(()));
+        Poll::Ready(Ok(()))
       }
       Poll::Ready(Some(Err(e))) => Poll::Ready(Err(io::Error::other(e))),
       Poll::Ready(None) => Poll::Ready(Ok(())),

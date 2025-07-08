@@ -37,9 +37,9 @@ pub fn mount(blk: Option<&str>, target: &str, fstype: Option<FsType>, flags: boo
   std::fs::create_dir_all(target)?;
 
   if let Some(blk) = blk.as_ref() {
-    log::info!("Mounting {blk} on {target} with fstype {:?}", fstype);
+    log::info!("Mounting {blk} on {target} with fstype {fstype:?}");
   } else {
-    log::info!("Mounting {target} with fstype {:?}", fstype);
+    log::info!("Mounting {target} with fstype {fstype:?}");
   }
 
   nix::mount::mount::<str, str, str, str>(
@@ -50,7 +50,7 @@ pub fn mount(blk: Option<&str>, target: &str, fstype: Option<FsType>, flags: boo
     None,
   )
   .map_err(|e| {
-    log::error!("Failed to mount {blk:?} on {target}: {}", e);
+    log::error!("Failed to mount {blk:?} on {target}: {e}");
     anyhow::anyhow!(e)
   })
 }
@@ -58,7 +58,7 @@ pub fn mount(blk: Option<&str>, target: &str, fstype: Option<FsType>, flags: boo
 pub fn unmount(target: &str) -> anyhow::Result<()> {
   log::info!("Unmounting {target}");
   nix::mount::umount(target).map_err(|e| {
-    log::error!("Failed to unmount {}: {}", target, e);
+    log::error!("Failed to unmount {target}: {e}");
     anyhow::anyhow!(e)
   })
 }

@@ -4,10 +4,10 @@ use nix::unistd::Uid;
 
 pub mod chroot;
 pub mod fstab;
+pub mod parted;
+pub mod parted_exe;
 pub mod process;
 pub mod syscall;
-pub mod parted_exe;
-pub mod parted;
 
 pub fn join_path(base: &str, path: &str) -> String {
   let mut full_path: PathBuf = PathBuf::from(base);

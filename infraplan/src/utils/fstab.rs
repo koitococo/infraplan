@@ -19,7 +19,7 @@ pub fn get_fstab_entries_by_content(contents: String) -> Vec<FstabEntry> {
       if line.is_empty() {
         return None;
       }
-      let parts: Vec<&str> = line.trim().split_whitespace().collect();
+      let parts: Vec<&str> = line.split_whitespace().collect();
       if parts.len() == 6 {
         let entry = FstabEntry {
           device: parts[0].into(),
@@ -39,7 +39,7 @@ pub fn get_fstab_entries_by_content(contents: String) -> Vec<FstabEntry> {
 
 pub fn get_fstab_entries_by_path<P: AsRef<std::path::Path>>(path: P) -> anyhow::Result<Vec<FstabEntry>> {
   std::fs::read_to_string(path)
-    .map(|contents| get_fstab_entries_by_content(contents))
+    .map(get_fstab_entries_by_content)
     .map_err(|e| anyhow::anyhow!("Failed to read /proc/self/mounts: {}", e))
 }
 
@@ -54,7 +54,7 @@ fn canonicalized_path(path: &str) -> anyhow::Result<String> {
 pub fn is_mountdevice(dev: &str) -> anyhow::Result<bool> {
   let fuz = dev.starts_with("/dev") && {
     let char = dev.as_bytes().last().unwrap_or(&b'\0');
-    char <= &b'9' && char >= &b'0'
+    (&b'0'..=&b'9').contains(&char)
   };
   let c_dev = canonicalized_path(dev)?;
   Ok(get_fstab_entries()?.iter().any(|entry| {
@@ -76,7 +76,7 @@ pub fn get_entry_by_mountpoint(mountpoint: &str) -> anyhow::Result<Option<FstabE
 pub fn find_mountpoint_by_device(dev: &str) -> anyhow::Result<Vec<FstabEntry>> {
   let fuz = dev.starts_with("/dev") && {
     let char = dev.as_bytes().last().unwrap_or(&b'\0');
-    char <= &b'9' && char >= &b'0'
+    (&b'0'..=&b'9').contains(&char)
   };
   let entries = get_fstab_entries()?;
   let c_dev = canonicalized_path(dev)?;
@@ -108,7 +108,7 @@ mod tests {
       );
     }
 
-    let entries =get_fstab_entries_by_content(
+    let entries = get_fstab_entries_by_content(
       r#"
     # /etc/fstab
 # Created by anaconda on Sun Jul 23 12:24:21 2023

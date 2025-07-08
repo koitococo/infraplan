@@ -28,7 +28,7 @@ pub fn find_kernel_parameters(new_root: &str) -> anyhow::Result<String> {
     if v.mount_point != "/" {
       return None;
     }
-    return Some((v.device.clone(), v.options.clone()));
+    Some((v.device.clone(), v.options.clone()))
   }) else {
     anyhow::bail!("No root filesystem found");
   };
@@ -44,7 +44,7 @@ pub fn find_kernel_parameters(new_root: &str) -> anyhow::Result<String> {
         let Ok(v) = v else {
           return None;
         };
-        return Some(v);
+        Some(v)
       })
       .collect();
 

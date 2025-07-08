@@ -1,0 +1,8 @@
+{
+  "anyhow::Result": {
+    "scope": "rust",
+    "prefix": "res",
+    "body": "anyhow::Result<${1}>",
+    "description": "anyhow::Result type",
+  }
+}
