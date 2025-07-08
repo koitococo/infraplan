@@ -34,7 +34,8 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo apt install libparted-dev
+          sudo apt-get update
+          sudo apt-get install libparted-dev
 
       - name: Install musl toolchain
         if: endsWith(matrix.target, '-linux-musl')

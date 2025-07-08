@@ -1,3 +1,8 @@
+set dotenv-load
+
+ROOT_PATH := justfile_directory()
+REMOTE_HOST := "${REMOTE_HOST}"
+
 ci-fmt:
 	cargo fmt --all -- --check
 
@@ -16,14 +21,14 @@ fix:
 	cargo clippy --fix --all-targets --all-features --allow-dirty --broken-code
 	cargo fmt --all
 
-commit-fix:
-	git -C ./libparted add -A && \
+commit-fixs:
+	git -C ./libparted add -u && \
 	  git -C ./libparted diff-index --quiet HEAD || \
 		git -C ./libparted commit -m 'style: apply `cargo fmt` and `cargo fix`'
-	git -C ./tokio-tar add -A && \
+	git -C ./tokio-tar add -u && \
 	  git -C ./tokio-tar diff-index --quiet HEAD || \
 		git -C ./tokio-tar commit -m 'style: apply `cargo fmt` and `cargo fix`'
-	git add -A && \
+	git add -u && \
 	  git diff-index --quiet HEAD || \
 		git commit -m 'style: apply `cargo fmt` and `cargo fix`'
 
@@ -36,7 +41,7 @@ test:
 	cargo test --all-targets --all-features
 
 push-remote: build
-	scp ./artifacts/* vfedora:
+	scp ./artifacts/* {{ REMOTE_HOST }}:
 
 debug-remote: test push-remote
-	ssh -t vfedora "./infraplan -v apply deploy_ubuntu.yaml"
+	ssh -t {{ REMOTE_HOST }} "./infraplan -v apply deploy_ubuntu.yaml"
