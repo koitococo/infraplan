@@ -15,7 +15,7 @@ build:
 fix:
 	cargo clippy --fix --all-targets --all-features --allow-dirty --broken-code
 	cargo fmt --all
-	
+
 commit-fix:
 	git -C ./libparted add -A && \
 	  git -C ./libparted diff-index --quiet HEAD || \
@@ -26,6 +26,11 @@ commit-fix:
 	git add -A && \
 	  git diff-index --quiet HEAD || \
 		git commit -m 'style: apply `cargo fmt` and `cargo fix`'
+
+git-push:
+	git -C ./libparted push
+	git -C ./tokio-tar push
+	git push
 
 test:
 	cargo test --all-targets --all-features
