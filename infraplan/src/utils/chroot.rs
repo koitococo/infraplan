@@ -8,7 +8,6 @@ use crate::utils::{
 };
 
 pub fn prepare_chroot(target: &str) -> anyhow::Result<()> {
-  // FIXME: Safety: The function assumes the target is not existed or a directory that is NOT a mountpoint. Checks should be added.
   log::info!("Preparing chroot environment at {target}");
   mount(None, join_path(target, "tmp").as_str(), Some(FsType::Tmpfs), false)?;
   mount(None, join_path(target, "run").as_str(), Some(FsType::Tmpfs), false)?;
@@ -28,7 +27,7 @@ pub fn prepare_chroot(target: &str) -> anyhow::Result<()> {
 
 pub fn cleanup_chroot(target: &str) -> anyhow::Result<()> {
   log::info!("Cleaning up chroot environment at {target}");
-  let mounts = ["tmp", "run", "proc", "sys", "dev", "dev/pts", "dev/shm", "sys/firmware/efi"];
+  let mounts = ["sys/firmware/efi", "dev/shm", "dev/pts", "dev", "sys", "proc", "run", "tmp"];
   for mount in mounts {
     let path = join_path(target, mount);
     if let Err(e) = unmount(&path) {

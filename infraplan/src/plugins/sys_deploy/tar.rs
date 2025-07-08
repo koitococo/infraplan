@@ -37,7 +37,6 @@ impl crate::plugins::Plugin for Config {
 
   async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
     log::info!("System Deployer with config: {self:?}; globals: {ctx:?}");
-    // TODO: implement system deployment logic here
 
     let (use_mdev, use_udev) = match ctx.distro_hint.as_ref() {
       Some(Distro::Alpine) => (true, false), // Alpine uses mdev

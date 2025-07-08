@@ -29,6 +29,10 @@ jobs:
           toolchain: nightly
           targets: ${{ matrix.target }}
 
+      - name: Install Dependencies
+        run: |
+          apt install libparted-dev
+      
       - name: Install musl toolchain
         if: endsWith(matrix.target, '-linux-musl')
         run: |

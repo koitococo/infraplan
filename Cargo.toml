@@ -3,4 +3,6 @@
 resolver = "3"
 members = [
   "infraplan",
+  "tokio-tar",
+  "libparted"
 ]

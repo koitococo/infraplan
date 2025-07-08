@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{plugins::sys_deploy::tar::extract_tarball, utils::elevate_privileges};
+use crate::utils::elevate_privileges;
 
 pub mod plugins;
 pub mod utils;
@@ -82,7 +82,8 @@ impl InternalTestArgs {
   async fn run(&self) -> anyhow::Result<()> {
     log::info!("Running internal tests...");
 
-    extract_tarball("/tmp/test.tar", "/tmp/dest", &None).await?;
+    let r = utils::parted::gather_disk_info("/dev/vdb")?;
+    println!("Disk info: {}", serde_json::to_string_pretty(&r)?);
 
     Ok(())
   }
