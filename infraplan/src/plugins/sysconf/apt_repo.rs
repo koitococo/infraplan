@@ -27,19 +27,17 @@ impl crate::plugins::Plugin for Context {
     }
 
     log::info!("Configuring APT repositories...");
-    let config_dir = PathBuf::from_str(self.chroot.as_ref().map(|v| v.as_str()).unwrap_or("/"))?.join("etc/apt");
+    let config_dir = PathBuf::from_str(self.chroot.as_deref().unwrap_or("/"))?.join("etc/apt");
 
     for item in config {
       let repo_file = match &item.name {
-        Some(name) => format!("sources.list.d/{}.list", name),
+        Some(name) => format!("sources.list.d/{name}.list"),
         None => "sources.list".to_string(),
       };
       let file_path = config_dir.join(repo_file);
-      if file_path.exists() {
-        if !item.overwrite.unwrap_or(false) {
-          log::info!("Skipping existing file {}", file_path.display());
-          continue;
-        }
+      if file_path.exists() && !item.overwrite.unwrap_or(false) {
+        log::info!("Skipping existing file {}", file_path.display());
+        continue;
       }
 
       let content = format!("deb {} {} {}\n", item.base_url, item.distro, item.components.join(" "));

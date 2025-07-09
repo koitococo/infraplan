@@ -7,7 +7,7 @@ pub async fn apk_update() -> anyhow::Result<()> {
   let (code, _, _) = run_command(EXE_APK, &["update"]).await?;
 
   if code != 0 {
-    log::error!("Failed to update package lists with exit code: {}", code);
+    log::error!("Failed to update package lists with exit code: {code}");
     return Err(anyhow::anyhow!("Failed to update package lists"));
   }
   log::info!("Package lists updated successfully.");
@@ -19,7 +19,7 @@ pub async fn apk_upgrade() -> anyhow::Result<()> {
   let (code, _, _) = run_command(EXE_APK, &["upgrade", "--no-progress"]).await?;
 
   if code != 0 {
-    log::error!("Failed to upgrade packages with exit code: {}", code);
+    log::error!("Failed to upgrade packages with exit code: {code}");
     return Err(anyhow::anyhow!("Failed to upgrade packages"));
   }
   log::info!("Packages upgraded successfully.");
@@ -41,7 +41,7 @@ pub async fn apk_install(packages: &[String]) -> anyhow::Result<()> {
   let (code, _, _) = run_command(EXE_APK, &args).await?;
 
   if code != 0 {
-    log::error!("Failed to install packages with exit code: {}", code);
+    log::error!("Failed to install packages with exit code: {code}");
     return Err(anyhow::anyhow!("Failed to install packages"));
   }
   log::info!("Packages installed successfully.");
@@ -63,7 +63,7 @@ pub async fn apk_remove(packages: &[String]) -> anyhow::Result<()> {
   let (code, _, _) = run_command(EXE_APK, &args).await?;
 
   if code != 0 {
-    log::error!("Failed to remove packages with exit code: {}", code);
+    log::error!("Failed to remove packages with exit code: {code}");
     return Err(anyhow::anyhow!("Failed to remove packages"));
   }
   log::info!("Packages removed successfully.");

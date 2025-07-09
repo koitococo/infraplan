@@ -9,13 +9,48 @@ use crate::utils::{
 
 pub fn prepare_chroot(target: &str) -> anyhow::Result<()> {
   log::info!("Preparing chroot environment at {target}");
-  mount(None, join_path_string(target, "tmp").as_str(), Some(FsType::Tmpfs), false)?;
-  mount(None, join_path_string(target, "run").as_str(), Some(FsType::Tmpfs), false)?;
-  mount(None, join_path_string(target, "proc").as_str(), Some(FsType::Proc), false)?;
-  mount(None, join_path_string(target, "sys").as_str(), Some(FsType::Sysfs), false)?;
-  mount(None, join_path_string(target, "dev").as_str(), Some(FsType::Devtmpfs), false)?;
-  mount(None, join_path_string(target, "dev/pts").as_str(), Some(FsType::Devpts), false)?;
-  mount(None, join_path_string(target, "dev/shm").as_str(), Some(FsType::Tmpfs), false)?;
+  mount(
+    None,
+    join_path_string(target, "tmp").as_str(),
+    Some(FsType::Tmpfs),
+    false,
+  )?;
+  mount(
+    None,
+    join_path_string(target, "run").as_str(),
+    Some(FsType::Tmpfs),
+    false,
+  )?;
+  mount(
+    None,
+    join_path_string(target, "proc").as_str(),
+    Some(FsType::Proc),
+    false,
+  )?;
+  mount(
+    None,
+    join_path_string(target, "sys").as_str(),
+    Some(FsType::Sysfs),
+    false,
+  )?;
+  mount(
+    None,
+    join_path_string(target, "dev").as_str(),
+    Some(FsType::Devtmpfs),
+    false,
+  )?;
+  mount(
+    None,
+    join_path_string(target, "dev/pts").as_str(),
+    Some(FsType::Devpts),
+    false,
+  )?;
+  mount(
+    None,
+    join_path_string(target, "dev/shm").as_str(),
+    Some(FsType::Tmpfs),
+    false,
+  )?;
   mount(
     None,
     join_path_string(target, "sys/firmware/efi").as_str(),

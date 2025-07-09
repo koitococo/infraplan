@@ -13,9 +13,8 @@ impl crate::plugins::Plugin for Context {
   type Config = Config;
   type State = bool;
 
-  async fn invoke(&self, config: &Self::Config, state: &mut Self::State) -> anyhow::Result<()> {
+  async fn invoke(&self, _config: &Self::Config, _state: &mut Self::State) -> anyhow::Result<()> {
     // TODO: implement logic here
     Ok(())
   }
 }
-

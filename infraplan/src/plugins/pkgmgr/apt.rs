@@ -7,7 +7,7 @@ pub async fn apt_update() -> anyhow::Result<()> {
   let (code, _, _) = run_command(EXE_APT, &["update"]).await?;
 
   if code != 0 {
-    log::error!("Failed to update package lists with exit code: {}", code);
+    log::error!("Failed to update package lists with exit code: {code}");
     return Err(anyhow::anyhow!("Failed to update package lists"));
   }
   log::info!("Package lists updated successfully.");
@@ -19,7 +19,7 @@ pub async fn apt_upgrade() -> anyhow::Result<()> {
   let (code, _, _) = run_command(EXE_APT, &["upgrade", "-y"]).await?;
 
   if code != 0 {
-    log::error!("Failed to upgrade packages with exit code: {}", code);
+    log::error!("Failed to upgrade packages with exit code: {code}");
     return Err(anyhow::anyhow!("Failed to upgrade packages"));
   }
   log::info!("Packages upgraded successfully.");
@@ -43,7 +43,7 @@ pub async fn apt_install(packages: &[String]) -> anyhow::Result<()> {
   .await?;
 
   if code != 0 {
-    log::error!("Failed to install packages with exit code: {}", code);
+    log::error!("Failed to install packages with exit code: {code}");
     return Err(anyhow::anyhow!("Failed to install packages"));
   }
   log::info!("Packages installed successfully.");
@@ -67,7 +67,7 @@ pub async fn apt_remove(packages: &[String]) -> anyhow::Result<()> {
   .await?;
 
   if code != 0 {
-    log::error!("Failed to remove packages with exit code: {}", code);
+    log::error!("Failed to remove packages with exit code: {code}");
     return Err(anyhow::anyhow!("Failed to remove packages"));
   }
   log::info!("Packages removed successfully.");

@@ -26,13 +26,13 @@ impl crate::plugins::Plugin for Context {
     for item in &configs.with {
       let mut state_i = state.pop().unwrap_or(false);
       match item {
-        ConfigItem::Netplan(config) => netplan::Context(self.0.clone()).invoke(&config, &mut state_i).await?,
+        ConfigItem::Netplan(config) => netplan::Context(self.0.clone()).invoke(config, &mut state_i).await?,
         ConfigItem::User(config) => {
           user::Context {
             globals: self.0.clone(),
             chroot: configs.chroot.clone(),
           }
-          .invoke(&config, &mut state_i)
+          .invoke(config, &mut state_i)
           .await?
         }
         ConfigItem::AptRepo(config) => {
@@ -40,7 +40,7 @@ impl crate::plugins::Plugin for Context {
             globals: self.0.clone(),
             chroot: configs.chroot.clone(),
           }
-          .invoke(&config, &mut state_i)
+          .invoke(config, &mut state_i)
           .await?
         }
       }

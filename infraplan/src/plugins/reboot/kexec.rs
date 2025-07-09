@@ -33,17 +33,17 @@ impl crate::plugins::Plugin for Context {
 
     let (kernel, initramfs) = match (&config.linux, &config.initrd) {
       (Some(linux), Some(initrd)) => {
-        let kernel = PathBuf::from_str(&linux)?;
+        let kernel = PathBuf::from_str(linux)?;
         if !kernel.exists() {
           anyhow::bail!("Specified kernel does not exist");
         }
-        log::info!("Using specified kernel: {}", linux);
+        log::info!("Using specified kernel: {linux}");
 
-        let initramfs = PathBuf::from_str(&initrd)?;
+        let initramfs = PathBuf::from_str(initrd)?;
         if !initramfs.exists() {
           anyhow::bail!("Specified initramfs does not exist");
         }
-        log::info!("Using specified initramfs: {}", initrd);
+        log::info!("Using specified initramfs: {initrd}");
 
         (kernel, initramfs)
       }
@@ -65,13 +65,13 @@ impl crate::plugins::Plugin for Context {
     };
     let append = match &config.append {
       Some(args) => {
-        log::info!("Using specified kernel parameters: {}", args);
+        log::info!("Using specified kernel parameters: {args}");
         args.to_string()
       }
       None => {
         log::info!("No kernel parameters specified, trying to find in new root");
         let params = find_kernel_params_grub(&config.root)?;
-        log::info!("Kernel parameters: {}", params);
+        log::info!("Kernel parameters: {params}");
         params
       }
     };
@@ -174,7 +174,7 @@ pub fn find_kernel(new_root: &str) -> anyhow::Result<Option<(PathBuf, PathBuf)>>
   let mut files = list_files(&boot_dir_path)?;
   files.sort();
   files.reverse();
-  if let Some(kernel) = files.iter().find(|v| v.file_name().map_or(false, |v| v == "vmlinuz" || v == "vmlinux")) {
+  if let Some(kernel) = files.iter().find(|v| v.file_name().is_some_and(|v| v == "vmlinuz" || v == "vmlinux")) {
     let initramfs = sibling_file(kernel, "initrd.img")?;
     if initramfs.exists() && initramfs.is_file() {
       return Ok(Some((kernel.clone(), initramfs.clone())));
@@ -185,12 +185,11 @@ pub fn find_kernel(new_root: &str) -> anyhow::Result<Option<(PathBuf, PathBuf)>>
       return Ok(Some((kernel.clone(), initramfs.clone())));
     }
   }
+  let pattern = regex::Regex::new(r#"(vmlinuz|vmlinux)-(.*)"#)?;
   for candidate in files.iter().filter(|v| {
-    v.file_name().map_or(false, |v| {
-      v.to_str().map_or(false, |s| s.starts_with("vmlinuz-") || s.starts_with("vmlinux-"))
-    })
+    v.file_name()
+      .is_some_and(|v| v.to_str().is_some_and(|s| s.starts_with("vmlinuz-") || s.starts_with("vmlinux-")))
   }) {
-    let pattern = regex::Regex::new(r#"(vmlinuz|vmlinux)-(.*)"#)?;
     let caps = pattern
       .captures(
         candidate
@@ -277,6 +276,6 @@ mod tests {
     let (kernel, initramfs) = result.unwrap().unwrap();
     assert!(kernel.exists());
     assert!(initramfs.exists());
-    println!("Found kernel: {:?}, initramfs: {:?}", kernel, initramfs);
+    println!("Found kernel: {kernel:?}, initramfs: {initramfs:?}");
   }
 }
