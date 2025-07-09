@@ -16,7 +16,11 @@ struct Cli {
 
 #[derive(Parser, Debug)]
 enum Command {
+  /// Apply the configuration from the specified path.
   Apply(ApplyArgs),
+
+  /// Recover states.
+  Recover(RecoverArgs),
 
   #[cfg(debug_assertions)]
   InternalTest(InternalTestArgs),
@@ -24,6 +28,13 @@ enum Command {
 
 #[derive(Parser, Debug)]
 struct ApplyArgs {
+  /// Path to the configuration file to apply.
+  path: String,
+}
+
+#[derive(Parser, Debug)]
+struct RecoverArgs {
+  /// Path to the state file.
   path: String,
 }
 
@@ -54,6 +65,9 @@ async fn main() -> anyhow::Result<()> {
     Command::Apply(args) => {
       args.run().await?;
     }
+    Command::Recover(args) => {
+      args.run().await?;
+    }
     #[cfg(debug_assertions)]
     Command::InternalTest(args) => {
       args.run().await?;
@@ -67,12 +81,19 @@ impl ApplyArgs {
     log::info!("Applying configuration from path: {}", self.path);
     match plugins::Config::from_path(&self.path) {
       Ok(config) => {
-        if let Err(e) = config.invoke().await {
-          log::error!("Error applying configuration: {e}");
-        }
+        let mut state = config.into_state();
+        state.invoke().await?;
+        log::info!("Configuration applied successfully.");
       }
       Err(e) => log::error!("Error reading configuration: {e}"),
     }
+    Ok(())
+  }
+}
+
+impl RecoverArgs {
+  async fn run(&self) -> anyhow::Result<()> {
+    log::info!("Recovering states from path: {}", self.path);
     Ok(())
   }
 }
@@ -81,9 +102,6 @@ impl ApplyArgs {
 impl InternalTestArgs {
   async fn run(&self) -> anyhow::Result<()> {
     log::info!("Running internal tests...");
-
-    let r = utils::parted::gather_disk_info("/dev/vdb")?;
-    println!("Disk info: {}", serde_json::to_string_pretty(&r)?);
 
     Ok(())
   }

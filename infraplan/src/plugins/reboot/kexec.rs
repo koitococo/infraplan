@@ -10,26 +10,86 @@ use crate::utils::fstab::get_fstab_entries_by_path;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Config {
-  pub linux: String,
-  pub initrd: String,
+  pub linux: Option<String>,
+  pub initrd: Option<String>,
   pub root: String,
   pub append: Option<String>,
   pub move_state: Option<String>,
 }
 
-impl crate::plugins::Plugin for Config {
-  type Context = crate::plugins::Global;
+pub struct Context(pub crate::plugins::Globals);
 
-  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
-    log::info!("Kexec with config: {self:?}; globals: {ctx:?}");
-    // TODO: implement kexec logic here
+impl crate::plugins::Plugin for Context {
+  type Config = Config;
+  type State = bool;
+
+  /// Actually no returns when successful
+  async fn invoke(&self, config: &Self::Config, state: &mut Self::State) -> anyhow::Result<()> {
+    if *state {
+      log::info!("Kexec already invoked");
+      return Ok(());
+    }
+    *state = true;
+
+    let (kernel, initramfs) = match (&config.linux, &config.initrd) {
+      (Some(linux), Some(initrd)) => {
+        let kernel = PathBuf::from_str(&linux)?;
+        if !kernel.exists() {
+          anyhow::bail!("Specified kernel does not exist");
+        }
+        log::info!("Using specified kernel: {}", linux);
+
+        let initramfs = PathBuf::from_str(&initrd)?;
+        if !initramfs.exists() {
+          anyhow::bail!("Specified initramfs does not exist");
+        }
+        log::info!("Using specified initramfs: {}", initrd);
+
+        (kernel, initramfs)
+      }
+      (Some(_), None) => {
+        log::error!("Got specified kernel but no initramfs");
+        anyhow::bail!("No initramfs specified");
+      }
+      (None, Some(_)) => {
+        log::error!("Got specified initramfs but no kernel");
+        anyhow::bail!("No kernel specified");
+      }
+      (None, None) => {
+        log::warn!("No kernel or initramfs specified, trying to find in new root");
+        let (kernel, initramfs) = find_kernel(&config.root)?.ok_or(anyhow::anyhow!("No kernel found"))?;
+        log::info!("Using kernel: {}", kernel.display());
+        log::info!("Using initramfs: {}", initramfs.display());
+        (kernel, initramfs)
+      }
+    };
+    let append = match &config.append {
+      Some(args) => {
+        log::info!("Using specified kernel parameters: {}", args);
+        args.to_string()
+      }
+      None => {
+        log::info!("No kernel parameters specified, trying to find in new root");
+        let params = find_kernel_params_grub(&config.root)?;
+        log::info!("Kernel parameters: {}", params);
+        params
+      }
+    };
+    let parmas = find_kernel_params_root(&config.root)?;
+    let kernel_params = format!("{parmas} {append}");
+
+    log::info!("Loading kernel and initramfs for kexec");
+    kexec_file_load(&kernel, &initramfs, kernel_params)?;
+
+    log::error!("Rebooting system using kexec");
+    kexec_reboot()?;
 
     Ok(())
   }
 }
 
 /// See also: https://docs.kernel.org/admin-guide/kernel-parameters.html
-pub fn find_kernel_parameters(new_root: &str) -> anyhow::Result<String> {
+pub fn find_kernel_params_root(new_root: &str) -> anyhow::Result<String> {
   let fstab = get_fstab_entries_by_path(PathBuf::from_str(new_root)?.join("etc/fstab"))?;
   let Some((root_device, root_options)) = fstab.iter().find_map(|v| {
     if v.mount_point != "/" {
@@ -45,6 +105,11 @@ pub fn find_kernel_parameters(new_root: &str) -> anyhow::Result<String> {
     format!("{root_device} rootflags={root_options}")
   };
 
+  let params = format!("root={root} ro");
+  Ok(params)
+}
+
+pub fn find_kernel_params_grub(new_root: &str) -> anyhow::Result<String> {
   let grub_config: Vec<(String, String)> =
     dotenvy::from_path_iter(PathBuf::from_str(new_root)?.join("etc/default/grub"))?
       .filter_map(|v| {
@@ -67,8 +132,7 @@ pub fn find_kernel_parameters(new_root: &str) -> anyhow::Result<String> {
     .map(|(_, v)| v.clone())
     .unwrap_or_else(|| String::from(""));
 
-  let params = format!("root={root} ro {grub_cmdline} {grub_cmdline_default}");
-  Ok(params)
+  Ok(format!("{grub_cmdline} {grub_cmdline_default}"))
 }
 
 fn is_file(item: &fs::DirEntry) -> anyhow::Result<bool> {
@@ -200,7 +264,7 @@ mod tests {
   #[test]
   fn test_find_kernel_parameters() {
     let root_path = "/";
-    let params = find_kernel_parameters(root_path).unwrap();
+    let params = find_kernel_params_root(root_path).unwrap();
     assert!(!params.is_empty(), "Kernel parameters should not be empty");
     println!("Kernel parameters: {params}");
   }

@@ -32,33 +32,38 @@ pub struct Config {
   pub common: super::CommonConfig,
 }
 
-impl crate::plugins::Plugin for Config {
-  type Context = crate::plugins::Global;
+#[derive(Debug, Clone)]
+pub struct Context(pub crate::plugins::Globals);
 
-  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
-    log::info!("System Deployer with config: {self:?}; globals: {ctx:?}");
+impl crate::plugins::Plugin for Context {
+  type Config = Config;
+  type State = bool;
 
-    let (use_mdev, use_udev) = match ctx.distro_hint.as_ref() {
+  async fn invoke(&self, config: &Self::Config, state: &mut Self::State) -> anyhow::Result<()> {
+    log::info!("System Deployer with config: {config:?}; context: {self:?}");
+
+    let (use_mdev, use_udev) = match self.0.distro_hint.as_ref() {
       Some(Distro::Alpine) => (true, false), // Alpine uses mdev
       Some(Distro::Arch) | Some(Distro::Debian) | Some(Distro::Fedora) | Some(Distro::Ubuntu) => (false, true), // Arch, Debian, Fedora, and Ubuntu use udev
       _ => {
         log::warn!(
           "Unknown distro hint: {:?}, defaulting to no mdev or udev",
-          ctx.distro_hint
+          self.0.distro_hint
         );
         (false, false)
       } // Unknown or unspecified distro, default to no mdev or udev
     };
     prepare_disk(
-      self.common.disk.as_str(),
+      config.common.disk.as_str(),
       use_mdev,
       use_udev,
-      self.common.mount.as_str(),
+      config.common.mount.as_str(),
     )
     .await?;
-    extract_tarball(self.url.as_str(), self.common.mount.as_str(), &self.compression).await?;
-    write_fstab(self.common.disk.as_str(), self.common.mount.as_str()).await?;
-    postinst(self.common.mount.as_str(), &self.common.distro).await?;
+    extract_tarball(config.url.as_str(), config.common.mount.as_str(), &config.compression).await?;
+    write_fstab(config.common.disk.as_str(), config.common.mount.as_str()).await?;
+    postinst(config.common.mount.as_str(), &self.0.distro_hint).await?;
+    *state = true;
     Ok(())
   }
 }

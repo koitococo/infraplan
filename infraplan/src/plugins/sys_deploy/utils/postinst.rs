@@ -3,10 +3,10 @@ use crate::{
   utils::chroot::{cleanup_chroot, prepare_chroot, run_command_chroot},
 };
 
-pub async fn postinst(mountpoint: &str, distro: &Distro) -> anyhow::Result<()> {
+pub async fn postinst(mountpoint: &str, distro: &Option<Distro>) -> anyhow::Result<()> {
   prepare_chroot(mountpoint)?;
   match distro {
-    Distro::Ubuntu => postinst_ubuntu(mountpoint).await?,
+    Some(Distro::Ubuntu) => postinst_ubuntu(mountpoint).await?,
     _ => {
       // TODO: Implement post-installation steps for other distros
       log::warn!("No post-installation steps defined for distro: {distro:?}");

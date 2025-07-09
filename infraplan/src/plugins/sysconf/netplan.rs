@@ -7,13 +7,15 @@ pub struct ConfigItem {
 }
 
 pub type Config = Vec<ConfigItem>;
+pub struct Context(pub crate::plugins::Globals);
 
-impl crate::plugins::Plugin for Config {
-  type Context = (Option<String>, crate::plugins::Global);
+impl crate::plugins::Plugin for Context {
+  type Config = Config;
+  type State = bool;
 
-  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
-    log::info!("Reconfigure Netplan with config: {self:?}; globals: {ctx:?}");
-    // TODO: implement Netplan reconfiguration logic here
+  async fn invoke(&self, config: &Self::Config, state: &mut Self::State) -> anyhow::Result<()> {
+    // TODO: implement logic here
     Ok(())
   }
 }
+

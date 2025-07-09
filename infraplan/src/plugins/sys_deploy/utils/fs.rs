@@ -1,6 +1,6 @@
 use crate::utils::{
   fstab::{find_mountpoint_by_device, is_mountpoint},
-  join_path,
+  join_path_string,
   parted_exe::{EXE_PARTED, get_parted_outputs},
   process::run_command,
   syscall::{FsType, mount, unmount_all},
@@ -146,19 +146,19 @@ pub async fn prepare_disk(disk: &str, use_mdev: bool, use_udev: bool, target: &s
 
   mount(
     Some(boot_path.as_str()),
-    join_path(target, "boot").as_ref(),
+    join_path_string(target, "boot").as_ref(),
     Some(FsType::Ext4),
     false,
   )?;
-  log::info!("Mounted boot partition at {}", join_path(target, "boot"));
+  log::info!("Mounted boot partition at {}", join_path_string(target, "boot"));
 
   mount(
     Some(efi_path.as_str()),
-    join_path(target, "boot/efi").as_ref(),
+    join_path_string(target, "boot/efi").as_ref(),
     Some(FsType::Vfat),
     false,
   )?;
-  log::info!("Mounted EFI partition at {}", join_path(target, "boot/efi"));
+  log::info!("Mounted EFI partition at {}", join_path_string(target, "boot/efi"));
   Ok(())
 }
 
@@ -180,7 +180,7 @@ PARTUUID={} /boot/efi vfat defaults 0 2"#,
 
 pub async fn write_fstab(disk: &str, target: &str) -> anyhow::Result<()> {
   let fstab_content = generate_fstab(disk).await?;
-  let fstab_path = join_path(target, "etc/fstab");
+  let fstab_path = join_path_string(target, "etc/fstab");
   std::fs::create_dir_all(
     std::path::Path::new(&fstab_path)
       .parent()

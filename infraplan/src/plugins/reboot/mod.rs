@@ -6,12 +6,15 @@ pub enum Config {
   Kexec(kexec::Config),
 }
 
-impl super::Plugin for Config {
-  type Context = super::Global;
+pub struct Context(pub crate::plugins::Globals);
 
-  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
-    match self {
-      Config::Kexec(inner) => inner.invoke(ctx).await,
+impl crate::plugins::Plugin for Context {
+  type Config = Config;
+  type State = bool;
+
+  async fn invoke(&self, config: &Self::Config, state: &mut Self::State) -> anyhow::Result<()> {
+    match config {
+      Config::Kexec(inner) => kexec::Context(self.0.clone()).invoke(inner, state).await,
     }
   }
 }

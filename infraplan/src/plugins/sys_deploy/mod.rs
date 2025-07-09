@@ -16,12 +16,20 @@ pub enum Config {
   Tar(tar::Config),
 }
 
-impl super::Plugin for Config {
-  type Context = super::Global;
+pub struct Context(pub crate::plugins::Globals);
 
-  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
-    match self {
-      Config::Tar(inner) => inner.invoke(ctx).await,
+impl crate::plugins::Plugin for Context {
+  type Config = Config;
+  type State = bool;
+
+  async fn invoke(&self, config: &Self::Config, state: &mut Self::State) -> anyhow::Result<()> {
+    if *state {
+      log::info!("Skipping sys_deploy plugin as it is already applied.");
+      return Ok(());
     }
+    match config {
+      Config::Tar(inner) => tar::Context(self.0.clone()).invoke(inner, state).await?,
+    }
+    Ok(())
   }
 }

@@ -1,6 +1,6 @@
 #![allow(async_fn_in_trait)]
 
-use std::path::Path;
+use std::{collections::HashMap, path::Path};
 
 pub mod pkgmgr;
 pub mod reboot;
@@ -10,12 +10,12 @@ pub mod sysconf;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Config {
   pub state_path: Option<String>,
-  pub global: Option<Global>,
-  pub recipe: Vec<Recipe>,
+  pub global: Option<Globals>,
+  pub recipe: Vec<RecipeConfig>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct Global {
+pub struct Globals {
   pub distro_hint: Option<Distro>,
 }
 
@@ -30,22 +30,47 @@ pub enum Distro {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-pub struct Recipe {
+pub struct RecipeConfig {
   pub id: String,
   pub name: Option<String>,
-  pub overrides: Option<Global>,
+  pub overrides: Option<Globals>,
 
   #[serde(flatten)]
-  pub recipe_config: RecipeConfig,
+  pub config: PluginConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct State {
+  pub config: Config,
+  pub states: HashMap<String, RecipeState>,
+  pub recipes: Vec<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct RecipeState {
+  pub id: String,
+  pub display_name: String,
+  pub global: Globals,
+  pub config: PluginConfig,
+  pub state: PluginState,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case", tag = "use", content = "with")]
-pub enum RecipeConfig {
-  SystemDeployer(sys_deploy::Config),
-  PackageManager(pkgmgr::Config),
-  Reboot(reboot::Config),
-  SystemReconfigurator(sysconf::Config),
+pub enum PluginConfig {
+  SystemDeployer(<sys_deploy::Context as Plugin>::Config),
+  PackageManager(<pkgmgr::Context as Plugin>::Config),
+  Reboot(<reboot::Context as Plugin>::Config),
+  SystemReconfigurator(<sysconf::Context as Plugin>::Config),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case", tag = "type", content = "state")]
+pub enum PluginState {
+  SystemDeployer(<sys_deploy::Context as Plugin>::State),
+  PackageManager(<pkgmgr::Context as Plugin>::State),
+  Reboot(<reboot::Context as Plugin>::State),
+  SystemReconfigurator(<sysconf::Context as Plugin>::State),
 }
 
 impl Config {
@@ -68,65 +93,137 @@ impl Config {
     }
   }
 
-  pub async fn invoke(&self) -> anyhow::Result<()> {
-    log::debug!("Invoking configuration: {self:?}");
+  pub fn into_state(self) -> State {
+    let mut states = HashMap::new();
+    let mut recipes = Vec::new();
     for recipe in &self.recipe {
-      if let Err(e) = recipe.invoke(self.global.as_ref().unwrap_or(&Global { distro_hint: None })).await {
-        log::error!(
-          "Failed to invoke recipe {}: {}",
-          recipe.name.as_deref().unwrap_or(&recipe.id),
-          e
-        );
-        return Err(e);
-      }
+      recipes.push(recipe.id.clone());
+      let state = recipe.into_state(&self.global);
+      states.insert(state.id.clone(), state);
     }
-    Ok(())
+    State {
+      config: self,
+      states,
+      recipes,
+    }
   }
 }
 
-impl Global {
-  pub fn clone_with_overrides(&self, overrides: &Option<Global>) -> Self {
-    let Some(overrides) = overrides else {
-      return self.clone();
+impl RecipeConfig {
+  pub fn into_state(&self, global: &Option<Globals>) -> RecipeState {
+    let global = match (global, &self.overrides) {
+      (Some(global), Some(overrides)) => Globals {
+        distro_hint: overrides.distro_hint.as_ref().or(global.distro_hint.as_ref()).cloned(),
+      },
+      (Some(global), None) => global.clone(),
+      (None, Some(overrides)) => overrides.clone(),
+      (None, None) => Globals { distro_hint: None },
     };
-    let overrides = overrides.clone();
-    let defaults = self.clone();
-    Global {
-      distro_hint: overrides.distro_hint.or(defaults.distro_hint),
+    RecipeState {
+      id: self.id.clone(),
+      display_name: self.name.clone().unwrap_or_else(|| self.id.clone()),
+      global,
+      config: self.config.clone(),
+      state: match &self.config {
+        PluginConfig::SystemDeployer(_) => {
+          PluginState::SystemDeployer(<sys_deploy::Context as Plugin>::State::default())
+        }
+        PluginConfig::PackageManager(_) => PluginState::PackageManager(<pkgmgr::Context as Plugin>::State::default()),
+        PluginConfig::Reboot(_) => PluginState::Reboot(<reboot::Context as Plugin>::State::default()),
+        PluginConfig::SystemReconfigurator(_) => {
+          PluginState::SystemReconfigurator(<sysconf::Context as Plugin>::State::default())
+        }
+      },
     }
   }
-}
-
-impl Recipe {
-  pub fn name(&self) -> &str { self.name.as_deref().unwrap_or(&self.id) }
 }
 
 pub trait Plugin {
-  type Context;
-  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()>;
+  type Config;
+  type State;
+
+  async fn invoke(&self, config: &Self::Config, state: &mut Self::State) -> anyhow::Result<()>;
 }
 
-impl Plugin for RecipeConfig {
-  type Context = Global;
+impl Plugin for Globals {
+  type Config = PluginConfig;
+  type State = PluginState;
 
-  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
-    match self {
-      RecipeConfig::SystemDeployer(config) => config.invoke(ctx).await,
-      RecipeConfig::PackageManager(config) => config.invoke(ctx).await,
-      RecipeConfig::Reboot(config) => config.invoke(ctx).await,
-      RecipeConfig::SystemReconfigurator(config) => config.invoke(ctx).await,
+  async fn invoke(&self, config: &Self::Config, state: &mut Self::State) -> anyhow::Result<()> {
+    match config {
+      PluginConfig::SystemDeployer(config) => {
+        let state_i = match state {
+          PluginState::SystemDeployer(s) => s,
+          _ => {
+            *state = PluginState::SystemDeployer(<sys_deploy::Context as Plugin>::State::default());
+            match state {
+              PluginState::SystemDeployer(s) => s,
+              _ => unreachable!("State should have been set to SystemDeployer"),
+            }
+          }
+        };
+        sys_deploy::Context(self.clone()).invoke(config, state_i).await
+      }
+      PluginConfig::PackageManager(config) => {
+        let state_i = match state {
+          PluginState::PackageManager(s) => s,
+          _ => {
+            *state = PluginState::PackageManager(<pkgmgr::Context as Plugin>::State::default());
+            match state {
+              PluginState::PackageManager(s) => s,
+              _ => unreachable!("State should have been set to PackageManager"),
+            }
+          }
+        };
+        pkgmgr::Context(self.clone()).invoke(config, state_i).await
+      }
+      PluginConfig::Reboot(config) => {
+        let state_i = match state {
+          PluginState::Reboot(s) => s,
+          _ => {
+            *state = PluginState::Reboot(<reboot::Context as Plugin>::State::default());
+            match state {
+              PluginState::Reboot(s) => s,
+              _ => unreachable!("State should have been set to Reboot"),
+            }
+          }
+        };
+        reboot::Context(self.clone()).invoke(config, state_i).await
+      }
+      PluginConfig::SystemReconfigurator(config) => {
+        let state_i = match state {
+          PluginState::SystemReconfigurator(s) => s,
+          _ => {
+            *state = PluginState::SystemReconfigurator(<sysconf::Context as Plugin>::State::default());
+            match state {
+              PluginState::SystemReconfigurator(s) => s,
+              _ => unreachable!("State should have been set to SystemReconfigurator"),
+            }
+          }
+        };
+        sysconf::Context(self.clone()).invoke(config, state_i).await
+      }
     }
   }
 }
 
-impl Plugin for Recipe {
-  type Context = Global;
+impl RecipeState {
+  pub async fn invoke(&mut self) -> anyhow::Result<()> {
+    self.global.invoke(&self.config, &mut self.state).await.map_err(|e| anyhow::anyhow!(e))
+  }
+}
 
-  async fn invoke(&self, ctx: &Self::Context) -> anyhow::Result<()> {
-    log::info!("Invoking recipe: {}", self.name());
-
-    let global = ctx.clone_with_overrides(&self.overrides);
-    self.recipe_config.invoke(&global).await
+impl State {
+  pub async fn invoke(&mut self) -> anyhow::Result<()> {
+    for recipe_id in &self.recipes {
+      log::info!("Invoking recipe: {recipe_id}");
+      if let Some(recipe_state) = self.states.get_mut(recipe_id) {
+        recipe_state.invoke().await?;
+      } else {
+        log::warn!("Recipe state for '{recipe_id}' not found");
+      }
+    }
+    Ok(())
   }
 }
 
@@ -140,15 +237,15 @@ mod tests {
   fn serialize() {
     let config = Config {
       state_path: Some("/infraplan-state.json".to_string()),
-      global: Some(Global {
+      global: Some(Globals {
         distro_hint: Some(Distro::Ubuntu),
       }),
       recipe: vec![
-        Recipe {
+        RecipeConfig {
           id: "system_deploy".to_string(),
           name: Some("Deploy ubuntu".to_string()),
           overrides: None,
-          recipe_config: RecipeConfig::SystemDeployer(sys_deploy::Config::Tar(sys_deploy::tar::Config {
+          config: PluginConfig::SystemDeployer(sys_deploy::Config::Tar(sys_deploy::tar::Config {
             url: "https://example.local/ubuntu.tar.zstd".to_string(),
             compression: Some(sys_deploy::tar::Compression::Zstd),
             common: sys_deploy::CommonConfig {
@@ -158,11 +255,11 @@ mod tests {
             },
           })),
         },
-        Recipe {
+        RecipeConfig {
           id: "system_reconfig".to_string(),
           name: Some("Reconfigure system".to_string()),
           overrides: None,
-          recipe_config: RecipeConfig::SystemReconfigurator(sysconf::Config {
+          config: PluginConfig::SystemReconfigurator(sysconf::Config {
             chroot: Some("/mnt".to_string()),
             with: vec![
               sysconf::ConfigItem::Netplan(vec![sysconf::netplan::ConfigItem {
@@ -185,23 +282,23 @@ mod tests {
             ],
           }),
         },
-        Recipe {
+        RecipeConfig {
           id: "reboot".to_string(),
           name: Some("Reboot system".to_string()),
           overrides: None,
-          recipe_config: RecipeConfig::Reboot(reboot::Config::Kexec(reboot::kexec::Config {
-            linux: "/mnt/boot/vmlinuz".to_string(),
-            initrd: "/mnt/boot/initrd.img".to_string(),
+          config: PluginConfig::Reboot(reboot::Config::Kexec(reboot::kexec::Config {
+            linux: Some("/mnt/boot/vmlinuz".to_string()),
+            initrd: Some("/mnt/boot/initrd.img".to_string()),
             root: "/dev/sda3".to_string(),
             append: Some("ro quiet splash".to_string()),
             move_state: Some("/mnt/infraplan-state.json".to_string()),
           })),
         },
-        Recipe {
+        RecipeConfig {
           id: "install_packages".to_string(),
           name: Some("Install packages".to_string()),
           overrides: None,
-          recipe_config: RecipeConfig::PackageManager(pkgmgr::Config {
+          config: PluginConfig::PackageManager(pkgmgr::Config {
             install: Some(vec![
               "vim".to_string(),
               "git".to_string(),
@@ -226,6 +323,12 @@ mod tests {
     println!("{yaml_content}");
     let deserialized_yaml = Config::from_yaml(&yaml_content).expect("Failed to deserialize YAML");
     assert_eq!(config, deserialized_yaml);
+
+    let state = config.into_state();
+    let state_json = serde_json::to_string_pretty(&state).expect("Failed to serialize state to JSON");
+    println!("{state_json}");
+    let deserialized_state: State = serde_json::from_str(&state_json).expect("Failed to deserialize state JSON");
+    assert_eq!(state, deserialized_state);
   }
 
   #[test]

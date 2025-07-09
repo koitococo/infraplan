@@ -9,7 +9,7 @@ pub mod parted_exe;
 pub mod process;
 pub mod syscall;
 
-pub fn join_path(base: &str, path: &str) -> String {
+pub fn join_path_string(base: &str, path: &str) -> String {
   let mut full_path: PathBuf = PathBuf::from(base);
   full_path.push(path);
   full_path.to_string_lossy().into_owned()

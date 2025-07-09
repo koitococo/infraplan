@@ -9,9 +9,10 @@ recipe:
     use: system_deployer
     with:
       type: tar
-      url: https://example.local/ubuntu.tar.gz
+      url: https://example.local/ubuntu.tar.zst
+      compression: zstd
       distro: ubuntu
-      disk: /dev/sda
+      disk: /dev/vdb
       mount: /mnt
     override:
       distro_hint: alpine

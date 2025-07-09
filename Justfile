@@ -1,7 +1,5 @@
 set dotenv-load
-
 ROOT_PATH := justfile_directory()
-REMOTE_HOST := "${REMOTE_HOST}"
 
 ci-fmt:
 	cargo fmt --all -- --check
@@ -40,8 +38,3 @@ git-push:
 test:
 	cargo test --all-targets --all-features
 
-push-remote: build
-	scp ./artifacts/* {{ REMOTE_HOST }}:
-
-debug-remote: test push-remote
-	ssh -t {{ REMOTE_HOST }} "./infraplan -v apply deploy_ubuntu.yaml"
