@@ -1,6 +1,9 @@
 use crate::{
   plugins::sys_deploy::Distro,
-  utils::chroot::{cleanup_chroot, prepare_chroot, run_command_chroot},
+  utils::{
+    chroot::{cleanup_chroot, prepare_chroot},
+    process::run_command_with_chroot,
+  },
 };
 
 pub async fn postinst(mountpoint: &str, distro: &Option<Distro>) -> anyhow::Result<()> {
@@ -21,8 +24,8 @@ const EXE_GRUB_INSTALL: &str = "grub-install";
 const EXE_UPDATE_GRUB: &str = "update-grub";
 
 async fn postinst_ubuntu(new_root: &str) -> anyhow::Result<()> {
-  run_command_chroot(EXE_UPDATE_INITRAMFS, &["-c", "-k", "all"], new_root).await?;
-  run_command_chroot(EXE_GRUB_INSTALL, &["--efi-directory=/boot/efi", "--recheck"], new_root).await?;
-  run_command_chroot(EXE_UPDATE_GRUB, &[], new_root).await?;
+  run_command_with_chroot(EXE_UPDATE_INITRAMFS, &["-c", "-k", "all"], new_root).await?;
+  run_command_with_chroot(EXE_GRUB_INSTALL, &["--efi-directory=/boot/efi", "--recheck"], new_root).await?;
+  run_command_with_chroot(EXE_UPDATE_GRUB, &[], new_root).await?;
   Ok(())
 }

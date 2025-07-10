@@ -9,7 +9,7 @@ pub mod sysconf;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Config {
-  pub state_path: Option<String>,
+  pub state_path: Option<String>, // TODO: implement persistent states
   pub global: Option<Globals>,
   pub recipe: Vec<RecipeConfig>,
 }
@@ -263,7 +263,8 @@ mod tests {
             chroot: Some("/mnt".to_string()),
             with: vec![
               sysconf::ConfigItem::Netplan(vec![sysconf::netplan::ConfigItem {
-                type_: "static".to_string(),
+                dhcp: true,
+                mac_address: "00:11:22:33:44:55".to_string(),
                 interface: "eth0".to_string(),
                 address: Some("172.16.1.1".to_string()),
               }]),

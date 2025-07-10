@@ -1,4 +1,4 @@
-use crate::utils::process::{run_command, run_command_with_input};
+use crate::utils::process::{run_command, run_command_with_chroot, run_command_with_input};
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ConfigItem {
@@ -35,22 +35,30 @@ impl crate::plugins::Plugin for Context {
       }
       log::info!("Configuring user: {}", item.name);
       let mut useradd_args: Vec<&str> = vec![
+        item.name.as_str(),
         "-m", // Create home directory
         "-s",
         "/bin/bash", // Default shell
       ];
-      if let Some(new_root) = &self.chroot {
-        useradd_args.push("--root"); // Chroot before add user
-        useradd_args.push(new_root.as_str());
-      }
+
       if let Some(groups) = &item.groups {
         for group in groups {
           useradd_args.push("-G"); // Add supplementary groups
           useradd_args.push(group.as_str());
         }
       }
-      useradd_args.push(item.name.as_str());
-      run_command(EXE_USERADD, &useradd_args).await?;
+
+      if let Some(new_root) = &self.chroot {
+        // useradd_args.push("--root"); // Chroot before add user
+        // useradd_args.push(new_root.as_str());
+        // run_command_with_root(EXE_USERADD, &useradd_args, &new_root).await?;
+
+        // In some distros (e.g. Fedora), the useradd command has compatibility issues with the distro in new root.
+        // Simply tricks on linker may not works
+        run_command_with_chroot(EXE_USERADD, &useradd_args, new_root).await?;
+      } else {
+        run_command(EXE_USERADD, &useradd_args).await?;
+      }
     }
 
     let mut reset_passwd = Vec::new();

@@ -74,7 +74,7 @@ pub async fn format_ext4(part: &str, label: &str, workarounds: Option<Vec<&str>>
     }
   }
   args.push(part);
-  let r = run_command(EXE_MKFS_EXT4, args.as_ref()).await?;
+  let r = run_command(EXE_MKFS_EXT4, args).await?;
   if r.0 != 0 {
     anyhow::bail!("Failed to format ext4 partition {part} with label {label}: {}", r.2);
   }

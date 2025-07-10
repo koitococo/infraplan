@@ -1,8 +1,10 @@
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ConfigItem {
-  #[serde(rename = "type")]
-  pub type_: String,
+  // #[serde(rename = "type")]
+  // pub type_: String,
+  pub dhcp: bool,
   pub interface: String,
+  pub mac_address: String,
   pub address: Option<String>,
 }
 
