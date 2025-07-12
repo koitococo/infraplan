@@ -11,7 +11,13 @@ env_logger = { version = "0.11.8", features = ["kv"] }
 futures-util = "0.3.31"
 libc = "0.2.174"
 log = { version = "0.4.27", features = ["kv", "std"] }
-nix = { version = "0.30.1", features = ["feature", "fs", "mount", "process", "user"] }
+nix = { version = "0.30.1", features = [
+  "feature",
+  "fs",
+  "mount",
+  "process",
+  "user",
+] }
 serde = { version = "1.0.219", features = ["derive"] }
 serde_json = "1.0.140"
 tokio = { version = "1.46.0", features = ["full"] }
@@ -32,7 +38,7 @@ astral-tokio-tar = { path = "../tokio-tar" }
 libparted = { path = "../libparted" }
 uuid = "1.17.0"
 openssl = { version = "0.10.73", features = ["vendored"] }
-utils-sys = { path = "../utils-sys"}
+utils-sys = { path = "../utils-sys" }
 glob = "0.3.2"
 regex = "1.11.1"
 netplan-types = "0.5.1"
