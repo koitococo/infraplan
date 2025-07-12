@@ -1,5 +1,3 @@
-state_path: /infraplan-state.json
-
 global:
   distro_hint: ubuntu
 
@@ -24,9 +22,11 @@ recipe:
       with:
         - use: netplan
           with:
-            - type: dhcp
+            - dhcp: true
+              mac_address: 00:11:22:33:44:55
               interface: eth0
-            - type: static
+            - dhcp: false
+              mac_address: 66:77:88:99:AA:BB
               interface: eth1
               address: 172.16.200.1
         - use: user
@@ -61,7 +61,6 @@ recipe:
       initrd: /mnt/boot/initrd.img
       root: /dev/sda3
       append: "ro quiet splash"
-      move_state: /mnt/infraplan-state.json
   - id: install_packages
     name: Install packages
     use: package_manager

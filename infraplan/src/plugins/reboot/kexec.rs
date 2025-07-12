@@ -14,7 +14,7 @@ pub struct Config {
   pub initrd: Option<String>,
   pub root: String,
   pub append: Option<String>,
-  pub move_state: Option<String>, // TODO: persistent states is not implemented yet
+  // pub move_state: Option<String>, // TODO: persistent states is not implemented yet
 }
 
 pub struct Context(pub crate::plugins::Globals);

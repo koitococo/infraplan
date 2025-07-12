@@ -9,7 +9,7 @@ pub mod sysconf;
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Config {
-  pub state_path: Option<String>, // TODO: implement persistent states
+  // pub state_path: Option<String>, // TODO: implement persistent states
   pub global: Option<Globals>,
   pub recipe: Vec<RecipeConfig>,
 }
@@ -236,7 +236,7 @@ mod tests {
   #[test]
   fn serialize() {
     let config = Config {
-      state_path: Some("/infraplan-state.json".to_string()),
+      // state_path: Some("/infraplan-state.json".to_string()),
       global: Some(Globals {
         distro_hint: Some(Distro::Ubuntu),
       }),
@@ -292,7 +292,7 @@ mod tests {
             initrd: Some("/mnt/boot/initrd.img".to_string()),
             root: "/dev/sda3".to_string(),
             append: Some("ro quiet splash".to_string()),
-            move_state: Some("/mnt/infraplan-state.json".to_string()),
+            // move_state: Some("/mnt/infraplan-state.json".to_string()),
           })),
         },
         RecipeConfig {
