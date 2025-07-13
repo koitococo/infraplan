@@ -20,9 +20,6 @@ fix:
   cargo fmt --all
 
 commit-fixs:
-  git -C ./libparted add -u && \
-    git -C ./libparted diff-index --quiet HEAD || \
-    git -C ./libparted commit -m 'style: apply `cargo fmt` and `cargo fix`'
   git -C ./tokio-tar add -u && \
     git -C ./tokio-tar diff-index --quiet HEAD || \
     git -C ./tokio-tar commit -m 'style: apply `cargo fmt` and `cargo fix`'
@@ -31,6 +28,5 @@ commit-fixs:
     git commit -m 'style: apply `cargo fmt` and `cargo fix`'
 
 git-push:
-  git -C ./libparted push
   git -C ./tokio-tar push
   git push

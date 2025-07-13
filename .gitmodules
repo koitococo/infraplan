@@ -1,6 +1,3 @@
 [submodule "tokio-tar"]
 	path = tokio-tar
 	url = https://github.com/koitococo/tokio-tar
-[submodule "libparted"]
-	path = libparted
-	url = https://github.com/koitococo/libparted

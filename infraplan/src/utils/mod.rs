@@ -4,7 +4,6 @@ use nix::unistd::Uid;
 
 pub mod chroot;
 pub mod fstab;
-pub mod parted;
 pub mod parted_exe;
 pub mod process;
 pub mod syscall;
